@@ -1,0 +1,387 @@
+/* Общий стиль */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background-color: #f4f4f4;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    padding: 20px;
+    overflow: hidden;
+}
+
+/* Верхняя панель вкладок */
+.tab-bar {
+    display: flex;
+    border-bottom: 1px solid black;
+    justify-content: space-between;
+    gap: 10px;
+    border-bottom: none;
+}
+
+.tab-bar button {
+    flex: 1;
+    border: none;
+    color: black;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 10px;
+    height: 40px;
+    background-color: #ffffff;
+    border-top: 1px solid white;
+    border-inline: 1px solid white;
+}
+
+.tab-bar button:hover {
+    border-top-color: #919191;
+    border-inline-color: #919191;
+}
+
+.tab-bar button.active {
+    border-top-color: black;
+    border-inline-color: black;
+    border-bottom: 1px solid white;
+}
+
+/* Содержимое вкладок */
+.content {
+    position: relative;
+    flex: 1;
+    display: none;
+    padding: 20px;
+    background-color: white;
+}
+
+.content.active {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Форма и секции */
+.form-section {
+    flex: 1;
+    overflow-y: scroll;
+}
+#tab3{
+    height: 80%;
+}
+.form-row {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    width: 500px;
+}
+
+.form-row label {
+    flex: 1;
+    font-size: 14px;
+    color: black;
+}
+
+.form-row input[type="number"],
+.form-row input[type="text"] {
+    flex: 2;
+    padding: 5px;
+    border: 1px solid #ccc;
+
+    background-color: white;
+}
+
+.form-row input[type="checkbox"] {
+    margin-right: 10px;
+}
+
+
+/* Панель управления */
+.control-panel {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+    gap: 20px;
+    background-color: #ffffff;
+    border-top: 1px solid #ddd;
+}
+
+.control-panel .button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 80px;
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    cursor: pointer;
+}
+
+.control-panel .button:hover {
+    background-color: #e6e6e6;
+}
+
+.control-panel .button img {
+    width: 32px;
+    height: 32px;
+    margin-bottom: 5px;
+}
+
+.control-panel .button span {
+    font-size: 12px;
+    color: #919191;
+    text-align: center;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    table-layout: fixed; /* Устанавливаем фиксированную ширину */
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 3px;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    width: 80px;
+    text-overflow: ellipsis;
+}
+
+th {
+    background-color: #919191;
+    color: white;
+    font-size: 12px;
+    position: relative; /* Для размещения ресайзера */
+}
+
+td {
+    font-size: 12px;
+    color: black;
+    position: relative;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
+
+td:hover {
+    overflow: visible;
+    z-index: 10;
+}
+
+tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+tr:hover {
+    background-color: #ddd;
+}
+#data-container{
+    padding-inline: 10px;
+    overflow: scroll;
+}
+
+.dropdown {
+    width: 100%;
+    padding: 5px;
+    border: 1px solid #ccc;
+    background-color: white;
+}
+
+.buttons {
+    position: fixed;
+    bottom: 150px;
+    right: 60px;
+}
+
+/* Инпуты в клетках */
+#tab2 input, #tab2 select {
+    width: 100%; /* Растягиваем на всю ширину клетки */
+    height: 100%; /* Растягиваем на всю высоту клетки */
+    text-align: center; /* Центрируем текст в инпутах */
+    box-sizing: border-box; /* Учитываем padding при расчете размеров */
+}
+#log-area-wrapper{
+    position: fixed;
+    right: 100px;
+    top: 50px;
+    background-color: #989898;
+    border: 1px solid black;
+    color: white;
+    z-index: 100;
+    width: 260px;
+    height: 40px;
+    text-align: center;
+    box-shadow: black 0 0 20px;
+    display: flex;
+    justify-content: center;
+}
+#log-area{
+    background-color: #989898;
+    width: 250px;
+    height: 30px;
+    padding: 3px;
+    border: 1px solid black;
+    margin-block: auto;
+}
+
+
+
+
+
+
+/* Контейнер интерфейса */
+#interface-container {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    height: 100%;
+    background-color: white;
+    border: 1px solid #ccc;
+}
+
+/* Левая панель рубрикации */
+#rubric-container {
+    width: 30%;
+    border-right: 1px solid #ccc;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Кнопка сброса */
+#reset-filter {
+    padding: 10px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    background-color: #f4f4f4;
+    cursor: pointer;
+    text-align: center;
+}
+
+#reset-filter:hover {
+    background-color: #e6e6e6;
+}
+
+/* Таблица рубрик */
+.table-container {
+    overflow-y: auto;
+    flex: 1;
+}
+
+#rubric-table-side {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: auto; /* Автоматическая ширина столбцов */
+}
+
+#rubric-table-side th, #rubric-table-side td {
+    border: 1px solid #ddd;
+    padding: 7px 5px; /* Минимальные отступы для текста */
+    text-align: left;
+    font-size: 12px;
+    word-wrap: break-word; /* Перенос длинных слов */
+    white-space: nowrap; /* Убирает nowrap, позволяет тексту переноситься */
+}
+
+#rubric-table-side th {
+    background-color: #919191;
+    font-weight: bold;
+    text-align: center;
+}
+
+#rubric-table-side tr:hover {
+    background-color: #ddd;
+    cursor: pointer;
+}
+
+#rubric-table-side tr.selected {
+    background-color: #d6d6d6;
+    font-weight: bold;
+}
+
+
+/* Ресайзер для изменения ширины */
+.resizer {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 5px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 1;
+    background-color: transparent;
+}
+.region-container {
+    position: relative;
+    max-width: 400px;
+    margin-bottom: 30px;
+    border: 1px solid #ccc;
+    display: none;
+    overflow-y: auto;
+    max-height: 300px;
+}
+
+.toggle-button {
+    display: inline-block;
+    padding: 5px 5px;
+    margin-top: 10px;
+    margin-bottom: 30px;
+    background-color: #707070;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.toggle-button:hover {
+    background-color: #878787;
+}
+
+.region {
+    margin-top: 5px;
+    cursor: pointer;
+}
+
+.region label {
+    cursor: pointer;
+}
+
+.sub-regions {
+    display: none;
+    margin-left: 20px;
+}
+
+.sub-regions .city {
+    display: flex;
+    align-items: center;
+    margin: 3px 0;
+}
+
+.expand-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    margin-right: 5px;
+}
+
+.expand-button:focus {
+    outline: none;
+}
+#search-input{
+    position: sticky;
+    top: 0;
+    width: 100%;
+}
