@@ -406,9 +406,6 @@ function renderRubricTable() {
           <input type="hidden" value="${rubric.id}" />
           <input type="text" value="${rubric.name}" onchange="updateRubric(${rubric.id}, 'name', this.value)" />
         </td>
-        <td>
-          <input type="text" value="${rubric.url}" onchange="updateRubric(${rubric.id}, 'url', this.value)" />
-        </td>
         <td class="checkbox-cell">
           <input type="checkbox" ${rubric.active ? "checked" : ""} onchange="updateRubric(${rubric.id}, 'active', this.checked)" />
         </td>

@@ -42,4 +42,20 @@ public class APIController {
         List<Category> rubrics = categoryRepository.findAll();
         return ResponseEntity.ok(rubrics);
     }
+    @PostMapping("/startParsing")
+    public void startParsing() {
+
+    }
+    @PostMapping("/stopParsing")
+    public void stopParsing() {
+
+    }
+    @PostMapping("/exportDB")
+    public void ExportDB(){
+
+    }
+    @PostMapping("/cleanCompanies")
+    public void cleanCompanies() {
+
+    }
 }

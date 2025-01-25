@@ -13,8 +13,6 @@ public class Category {
     private int id;
     @Column(name = "category_name")
     private String name;
-    @Column(name = "category_url")
-    private String url;
     @Column(name = "category_active")
     private boolean active = false;
     @Column(name = "category_level")

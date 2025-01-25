@@ -20,19 +20,18 @@
 <!-- Содержимое вкладок -->
 <div id="tab1" class="content active">
     <div id="interface-container">
-        <!-- Левая панель рубрикации -->
         <div id="rubric-container">
             <button id="reset-filter" onclick="resetFilter()">Сбросить</button>
             <div class="table-container">
                 <table id="rubric-table-side">
                     <thead>
                     <tr>
-                        <th>Название рубрики</th>
+                        <th>Название категории</th>
                         <th>Кол-во</th>
                     </tr>
                     </thead>
                     <tbody>
-                    <!-- Рубрики добавляются динамически -->
+                    <!-- категории добавляются динамически -->
                     </tbody>
                 </table>
             </div>
@@ -41,11 +40,7 @@
             <table id="resizable-table">
                 <thead>
                 <tr>
-                    <th>Раздел</th>
-                    <th>Подраздел</th>
-                    <th>Подрубрика</th>
-                    <th>Рубрика</th>
-                    <th>Категория субъекта</th>
+                    <th>категория</th>
                     <th>Название организации</th>
                     <th>Учредитель</th>
                     <th>Должность учредителя</th>
@@ -75,9 +70,6 @@
                 <!-- Пример строки данных -->
                 <tr>
                     <td>Торговля</td>
-                    <td>Оптовая торговля</td>
-                    <td>Продукты питания</td>
-                    <td>Молочные продукты</td>
                     <td>ООО</td>
                     <td>ООО "Молоко"</td>
                     <td>Иванов Иван</td>
@@ -119,10 +111,9 @@
         <table>
             <thead>
             <tr>
-                <th>Название рубрики</th>
-                <th>Ссылка</th>
+                <th>Название категории</th>
                 <th>Поиск включен</th>
-                <th>Уровень ссылки</th>
+                <th>Уровень категории</th>
             </tr>
             </thead>
             <tbody id="rubric-table">
