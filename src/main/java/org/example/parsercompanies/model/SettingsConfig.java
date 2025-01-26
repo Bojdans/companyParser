@@ -6,6 +6,7 @@ import lombok.Data;
 public class SettingsConfig {
     private Long pagesDeep;
     private Double parsingDelay;
+    private boolean autoExcelOpen;
     private boolean onlyInOperation;
     private boolean partOfGovernmentProcurement;
     private boolean onlyMainOKVED;

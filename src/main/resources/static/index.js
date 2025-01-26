@@ -468,3 +468,90 @@ function generateMenu(){
         }
     })
 }
+function startExport(){
+    fetch('api/exportCompaniesDB',{
+        method:"POST"
+    }).then(response => {
+        logArea.textContent= "Экспорт завершён"
+    })
+}
+function cleanCompanies(){
+    fetch('api/cleanCompanies',{
+        method:"POST"
+    }).then(response => {
+        //функция рендера таблицы городов
+        fetchCompanies().then(response => {
+            if (response.ok){
+                logArea.textContent= "Очищено"
+            }else{
+                logArea.textContent= "Ошибка при отображении компаний"
+            }
+        })
+    })
+}
+async function fetchCompanies() {
+    const response = await fetch('http://localhost:8081/api/getAllCompanies');
+    const companies = await response.json();
+    const tableBody = document.querySelector('#company-table tbody');
+    companies.forEach(company => {
+        const row = document.createElement('tr');
+        const phoneOptions = company.phones
+            ? company.phones.split(',').map(phone => `<option>${phone.trim()}</option>`).join('')
+            : '';
+        row.innerHTML = `
+                <td>${company.organizationType || ''}</td>
+                <td>${company.organizationName || ''}</td>
+                <td>${company.founder || ''}</td>
+                <td>${company.founderPosition || ''}</td>
+                <td>${company.inn || ''}</td>
+                <td>${company.ogrn || ''}</td>
+                <td>${company.okatoCode || ''}</td>
+                <td>${company.authorizedCapital || ''}</td>
+                <td>${company.legalAddress || ''}</td>
+                <td>${company.city || ''}</td>
+                <td>
+                    <select class="dropdown">${phoneOptions}</select>
+                </td>
+                <td>${company.email || ''}</td>
+                <td>${company.website || ''}</td>
+                <td>${company.revenue || ''}</td>
+                <td>${company.profit || ''}</td>
+                <td>${company.capital || ''}</td>
+                <td>${company.taxes || ''}</td>
+                <td>${company.insuranceContributions || ''}</td>
+                <td>${company.governmentPurchasesCustomer || ''}</td>
+                <td>${company.governmentPurchasesSupplier || ''}</td>
+                <td>${company.activeCompany ? 'Да' : 'Нет'}</td>
+                <td>${company.registrationDate || ''}</td>
+                <td>${company.numberOfEmployees || ''}</td>
+                <td>${company.okvedCode || ''}</td>
+            `;
+        tableBody.appendChild(row);
+    });
+}
+
+window.onload = fetchCompanies;
+
+function startParsing(){
+    logArea.textContent = "парсинг компаний..."
+    fetch('api/startParsingCompanies',{
+        method:"POST"
+    }).then(response => {
+        //функция рендера таблицы городов
+        if (response.ok)logArea.textContent= "Компании собраны"
+        else logArea.textContent = "ошибка при парсинге"
+        fetchCompanies()
+    })
+}
+function stopParsing(){
+    fetch('api/stopParsingCompanies',{
+        method:"POST"
+    }).then(response => {
+    })
+}
+function shutdown(){
+    fetch('api/shutdown',{
+        method:"POST"
+    }).then(response => {
+    })
+}

@@ -17,7 +17,8 @@ public class Company {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id; // Первичный ключ
-
+    @Column
+    private String url;
     @Column(name = "organization_name")
     private String organizationName; // Название организации
 

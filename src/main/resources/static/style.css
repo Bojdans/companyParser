@@ -66,9 +66,11 @@ body {
     flex: 1;
     overflow-y: scroll;
 }
-#tab3{
+
+#tab3 {
     height: 80%;
 }
+
 .form-row {
     margin-bottom: 15px;
     display: flex;
@@ -87,7 +89,6 @@ body {
     flex: 2;
     padding: 5px;
     border: 1px solid #ccc;
-
     background-color: white;
 }
 
@@ -95,6 +96,11 @@ body {
     margin-right: 10px;
 }
 
+input[type="checkbox"] {
+    -webkit-appearance: checkbox;
+    width: 20px;
+    height: 20px;
+}
 
 /* Панель управления */
 .control-panel {
@@ -181,7 +187,8 @@ tr:nth-child(even) {
 tr:hover {
     background-color: #ddd;
 }
-.company-container{
+
+.company-container {
     padding-inline: 10px;
     overflow: scroll;
 }
@@ -205,9 +212,10 @@ tr:hover {
     height: 100%; /* Растягиваем на всю высоту клетки */
     box-sizing: border-box; /* Учитываем padding при расчете размеров */
 }
-#log-area-wrapper{
+
+#log-area-wrapper {
     position: fixed;
-    right: 100px;
+    right: 70px;
     top: 50px;
     background-color: #989898;
     border: 1px solid black;
@@ -220,7 +228,8 @@ tr:hover {
     display: flex;
     justify-content: center;
 }
-#log-area{
+
+#log-area {
     background-color: #989898;
     width: 250px;
     height: 30px;
@@ -228,10 +237,6 @@ tr:hover {
     border: 1px solid black;
     margin-block: auto;
 }
-
-
-
-
 
 
 /* Контейнер интерфейса */
@@ -278,6 +283,9 @@ tr:hover {
     flex: 1;
 }
 
+#tab1 {
+    overflow-y: scroll;
+}
 
 #rubric-table-side th, #rubric-table-side td {
     border: 1px solid #ddd;
@@ -316,6 +324,7 @@ tr:hover {
     z-index: 1;
     background-color: transparent;
 }
+
 .region-container {
     position: relative;
     max-width: 400px;
@@ -374,19 +383,23 @@ tr:hover {
 .expand-button:focus {
     outline: none;
 }
-#search-input{
+
+#search-input {
     position: sticky;
     top: 0;
     width: 100%;
 }
+
 #rubric-table-side {
     width: 100%;
     border-collapse: collapse;
     table-layout: auto; /* Автоматическая ширина столбцов */
 }
+
 #tab2 {
     overflow-y: scroll;
 }
+
 input#rubric-search {
     position: fixed;
     width: 300px;

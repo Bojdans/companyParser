@@ -5,12 +5,15 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.example.parsercompanies.model.db.Company;
 import org.example.parsercompanies.repos.CompanyRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.awt.Desktop;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -77,7 +80,7 @@ public class ExcelExportService {
             row.createCell(17).setCellValue(company.getInsuranceContributions() != null ? company.getInsuranceContributions().toString() : "");
             row.createCell(18).setCellValue(company.getGovernmentPurchasesCustomer());
             row.createCell(19).setCellValue(company.getGovernmentPurchasesSupplier());
-            row.createCell(20).setCellValue(company.getActiveCompany() != null && company.getActiveCompany() ? "Yes" : "No");
+            row.createCell(20).setCellValue(company.getActiveCompany() != null && company.getActiveCompany() ? "Да" : "Нет");
             row.createCell(21).setCellValue(company.getRegistrationDate() != null ? company.getRegistrationDate().toString() : "");
             row.createCell(22).setCellValue(company.getNumberOfEmployees() != null ? company.getNumberOfEmployees().toString() : "");
             row.createCell(23).setCellValue(company.getOkvedCode());
@@ -112,9 +115,11 @@ public class ExcelExportService {
         System.out.println("Data exported to: " + filePath);
 
         // Автоматическое открытие файла, если разрешено
-        System.out.println(Desktop.isDesktopSupported());
-        if (autoOpenExcel && Desktop.isDesktopSupported()) {
-            Desktop.getDesktop().open(filePath.toFile());
+        try {
+            String command = "cmd /c start \"\" \"" + filePath+ "\"";
+            Runtime.getRuntime().exec(command);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
