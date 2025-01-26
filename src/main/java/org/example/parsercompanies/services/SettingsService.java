@@ -2,6 +2,7 @@ package org.example.parsercompanies.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PreDestroy;
+import lombok.Data;
 import lombok.Getter;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -17,14 +18,15 @@ import java.util.Map;
 public class SettingsService {
 
     @Value("${webdriver.chrome.driver}")
+    @Getter
     private String chromeDriverPath;
-
     private String settingsFilePath = "src/main/resources/settingsConfig.json";
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private WebDriver webDriver;
     @Getter
     private Map<String, Object> settings;
+    @Getter
+    private ChromeOptions options;
 
     public SettingsService() throws IOException {
         loadSettings();
@@ -36,6 +38,7 @@ public class SettingsService {
             throw new IOException("Settings file not found: " + settingsFilePath);
         }
         settings = objectMapper.readValue(settingsFile, Map.class);
+        options = new ChromeOptions();
     }
 
     private void saveSettings() throws IOException {
@@ -48,19 +51,12 @@ public class SettingsService {
         saveSettings();
     }
 
-    public WebDriver getWebDriver() throws IOException {
-        if (webDriver == null) {
-            reloadWebDriver();
-        }
-        return webDriver;
-    }
-
     public void reloadWebDriver() throws IOException {
         loadSettings();
 
         System.setProperty("webdriver.chrome.driver", chromeDriverPath);
 
-        ChromeOptions options = new ChromeOptions();
+        options = new ChromeOptions();
 
         String proxy = (String) settings.get("proxy");
         String proxyLogin = (String) settings.get("proxyLogin");
@@ -75,18 +71,6 @@ public class SettingsService {
             System.out.println("Proxy enabled: " + proxy);
         } else {
             System.out.println("Proxy is not configured.");
-        }
-
-        if (webDriver != null) {
-            webDriver.quit();
-        }
-        webDriver = new ChromeDriver(options);
-    }
-
-    @PreDestroy
-    public void destroy() {
-        if (webDriver != null) {
-            webDriver.quit();
         }
     }
 }

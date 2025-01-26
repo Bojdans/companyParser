@@ -15,19 +15,17 @@
     <button onclick="switchTab('tab3')">Настройки</button>
 </div>
 <div id="log-area-wrapper">
-    <div id="log-area">Запрос на сервер...</div>
+    <div id="log-area">Здравствуйте!</div>
 </div>
 <!-- Содержимое вкладок -->
 <div id="tab1" class="content active">
     <div id="interface-container">
         <div id="rubric-container">
-            <button id="reset-filter" onclick="resetFilter()">Сбросить</button>
             <div class="table-container">
                 <table id="rubric-table-side">
                     <thead>
                     <tr>
-                        <th>Название категории</th>
-                        <th>Кол-во</th>
+                        <th>Выбранные категории</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -36,11 +34,11 @@
                 </table>
             </div>
         </div>
-        <div id="data-container">
-            <table id="resizable-table">
+        <div class="company-container">
+            <table id="company-table">
                 <thead>
                 <tr>
-                    <th>категория</th>
+                    <th>Тип организации</th>
                     <th>Название организации</th>
                     <th>Учредитель</th>
                     <th>Должность учредителя</th>
@@ -69,7 +67,6 @@
                 <tbody>
                 <!-- Пример строки данных -->
                 <tr>
-                    <td>Торговля</td>
                     <td>ООО</td>
                     <td>ООО "Молоко"</td>
                     <td>Иванов Иван</td>
@@ -116,6 +113,13 @@
                 <th>Уровень категории</th>
             </tr>
             </thead>
+            <div>
+                <input
+                        type="text"
+                        id="rubric-search"
+                        placeholder="Поиск рубрики..."
+                />
+            </div>
             <tbody id="rubric-table">
             <!-- Строки добавляются динамически -->
             </tbody>
@@ -183,19 +187,19 @@
     </div>
 </div>
 <div class="control-panel">
-    <div class="button" id="start-button">
+    <div class="button" id="start-button" onclick="startParsing()">
         <img src="img/icons8-старт-50.png" alt="Старт">
         <span>Старт</span>
     </div>
-    <div class="button" id="stop-button">
+    <div class="button" id="stop-button stopParsing()">
         <img src="img/icons8-стоп-50.png" alt="Стоп">
         <span>Стоп</span>
     </div>
-    <div class="button" id="export-button">
+    <div class="button" id="export-button" onclick="startExport()">
         <img src="img/icons8-microsoft-excel-50.png" alt="Экспорт">
         <span>Экспорт</span>
     </div>
-    <div class="button" id="clear-button">
+    <div class="button" id="clear-button" onclick="cleanCompanies()">
         <img src="img/icons8-удалить-50.png" alt="Очистить">
         <span>Очистить</span>
     </div>

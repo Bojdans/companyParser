@@ -181,7 +181,7 @@ tr:nth-child(even) {
 tr:hover {
     background-color: #ddd;
 }
-#data-container{
+.company-container{
     padding-inline: 10px;
     overflow: scroll;
 }
@@ -203,7 +203,6 @@ tr:hover {
 #tab2 input, #tab2 select {
     width: 100%; /* Растягиваем на всю ширину клетки */
     height: 100%; /* Растягиваем на всю высоту клетки */
-    text-align: center; /* Центрируем текст в инпутах */
     box-sizing: border-box; /* Учитываем padding при расчете размеров */
 }
 #log-area-wrapper{
@@ -275,15 +274,10 @@ tr:hover {
 
 /* Таблица рубрик */
 .table-container {
-    overflow-y: auto;
+    overflow-y: scroll;
     flex: 1;
 }
 
-#rubric-table-side {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: auto; /* Автоматическая ширина столбцов */
-}
 
 #rubric-table-side th, #rubric-table-side td {
     border: 1px solid #ddd;
@@ -384,4 +378,20 @@ tr:hover {
     position: sticky;
     top: 0;
     width: 100%;
+}
+#rubric-table-side {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: auto; /* Автоматическая ширина столбцов */
+}
+#tab2 {
+    overflow-y: scroll;
+}
+input#rubric-search {
+    position: fixed;
+    width: 300px;
+    height: 30px;
+    top: 65px;
+    z-index: 99;
+    margin-left: calc(50% - 200px);
 }

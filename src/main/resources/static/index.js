@@ -2,6 +2,7 @@ let viewFilter = {
     rubric: ""
 }
 let rubrics = [];
+let logArea = document.getElementById("log-area")
 function switchTab(tabId) {
     const tabs = document.querySelectorAll('.content');
     const buttons = document.querySelectorAll('.tab-bar button');
@@ -13,44 +14,21 @@ function switchTab(tabId) {
     buttons[[...tabs].findIndex(tab => tab.id === tabId)].classList.add('active');
 }
 
-const rubricsSide = [
-    {name: "Сельское хозяйство", count: 10},
-    {name: "Растениеводство", count: 8},
-    {name: "Однолетние культуры", count: 5},
-    {name: "Зерновые культуры", count: 7}
-];
 // Генерация рубрик в таблице
-const rubricTableBody = document.querySelector("#rubric-table-side tbody");
-rubricsSide.forEach(rubric => {
-    const row = document.createElement("tr");
-    row.onclick = () => selectRubric(row);
-    row.innerHTML = `
+function renderSideRubrics(rubricsSide) {
+    const rubricTableBody = document.querySelector("#rubric-table-side tbody");
+    rubricsSide.forEach(rubric => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
                 <td>${rubric.name}</td>
-                <td>${rubric.count}</td>
             `;
-    rubricTableBody.appendChild(row);
-});
-
-// Выбор рубрики
-function selectRubric(row) {
-    document.querySelectorAll("#rubric-table-side tbody tr").forEach(r => {
-        r.classList.remove("selected");
+        rubricTableBody.appendChild(row);
     });
-    row.classList.add("selected");
-
-}
-
-// Сброс фильтрации
-function resetFilter() {
-    document.querySelectorAll("#rubric-table-side tbody tr").forEach(r => {
-        r.classList.remove("selected");
-    });
-
 }
 
 //Изменение размеров таблицы
 document.addEventListener("DOMContentLoaded", () => {
-    const table = document.querySelector("#resizable-table");
+    const table = document.querySelector("#company-table");
     const headers = table.querySelectorAll("th");
 
     headers.forEach((header) => {
@@ -243,8 +221,8 @@ function loadSettingsFromServer() {
             updateRegionsAndCities(settings.cities, settings.regions);
         })
         .catch((error) => {
-            console.error('Error loading settings:', error);
-            alert('Ошибка загрузки настроек.');
+
+            
         });
 }
 
@@ -325,11 +303,10 @@ function refreshSettings() {
             if (!response.ok) {
                 throw new Error('Failed to save settings');
             }
-            alert('Settings updated successfully!');
+            
         })
         .catch(error => {
-            console.error('Error:', error);
-            alert('Failed to update settings.');
+
         });
 }
 
@@ -365,7 +342,6 @@ function saveRubrics() {
         const rubric = {
             id: parseInt(row.querySelector("input[type='hidden']").value, 10),
             name: row.querySelector("input[type='text']").value,
-            url: row.querySelector("input[type='url']").value,
             active: row.querySelector("input[type='checkbox']").checked,
             level: parseInt(row.querySelector("input[type='number']").value, 10),
         };
@@ -384,18 +360,20 @@ function saveRubrics() {
             if (!response.ok) {
                 throw new Error("Failed to update rubrics");
             }
-            alert("Rubrics updated successfully!");
+            
         })
         .catch((error) => {
-            console.error("Error updating rubrics:", error);
-            alert("Failed to update rubrics.");
+
+            
         });
 }
 
 function updateRubric(index, key, value) {
     rubrics[index][key] = value; // Обновляем локальные данные
 }
-function renderRubricTable() {
+
+function renderRubricTable(rubrics) {
+    console.log("рендер таблицы")
     const tableBody = document.getElementById("rubric-table");
     tableBody.innerHTML = ""; // Очищаем таблицу перед повторным рендерингом
     rubrics.forEach((rubric) => {
@@ -417,6 +395,7 @@ function renderRubricTable() {
         tableBody.appendChild(row);
     });
 }
+
 function loadRubricsFromServer() {
     fetch('/api/getCategories', {
         method: 'GET',
@@ -432,11 +411,20 @@ function loadRubricsFromServer() {
         })
         .then((data) => {
             rubrics = data; // Заполняем глобальный массив rubrics данными с сервера
-            renderRubricTable(); // Отображаем таблицу
+            renderRubricTable(rubrics); // Отображаем таблицу
+            fetch("/api/getActiveCategories").then((response) => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch rubrics');
+                }
+                return response.json();
+            })
+                .then((data) => {
+                     // Заполняем глобальный массив rubrics данными с сервера
+                    renderSideRubrics(data); // Отображаем таблицу
+                })
         })
         .catch((error) => {
-            console.error('Error loading rubrics:', error);
-            alert('Ошибка загрузки рубрик.');
+            
         });
 }
 
@@ -444,3 +432,39 @@ function loadRubricsFromServer() {
 document.addEventListener('DOMContentLoaded', () => {
     loadRubricsFromServer();
 });
+
+// Attach event listener for the search input
+function searchCategories() {
+    const query = document.getElementById("rubric-search").value;
+
+    fetch(`/api/searchCategories?query=${encodeURIComponent(query)}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch categories');
+            }
+            return response.json();
+        })
+        .then(categories => {
+            console.log(categories)
+            renderRubricTable(categories);
+        })
+        .catch(error => {
+            console.error("Error fetching categories:", error);
+        });
+}
+
+document.getElementById("rubric-search").addEventListener("input", searchCategories);
+
+function generateMenu(){
+    logArea.textContent = "Сбор категорий...."
+    fetch('api/startParsingCategories',{
+        method:"POST"
+    }).then(response => {
+        if (!response.ok) {
+            throw new Error('Failed to fetch categories');
+        }else {
+            logArea.textContent = "Категории собраны"
+            loadRubricsFromServer()
+        }
+    })
+}

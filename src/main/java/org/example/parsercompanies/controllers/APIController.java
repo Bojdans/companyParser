@@ -2,22 +2,32 @@ package org.example.parsercompanies.controllers;
 
 import org.example.parsercompanies.model.db.Category;
 import org.example.parsercompanies.model.db.City;
+import org.example.parsercompanies.parsers.CategoriesParser;
 import org.example.parsercompanies.repos.CategoryRepository;
 import org.example.parsercompanies.repos.CityRepository;
+import org.example.parsercompanies.repos.CompanyRepository;
+import org.example.parsercompanies.services.ExcelExportService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api")
 public class APIController {
+    private final CompanyRepository companyRepository;
     private CityRepository cityRepository;
     private CategoryRepository categoryRepository;
-    public APIController(CityRepository cityRepository, CategoryRepository categoryRepository) {
+    private CategoriesParser categoriesParser;
+    private ExcelExportService excelExportService;
+    public APIController(CityRepository cityRepository, CategoryRepository categoryRepository, CategoriesParser categoriesParser, ExcelExportService excelExportService, CompanyRepository companyRepository) {
         this.cityRepository = cityRepository;
         this.categoryRepository = categoryRepository;
+        this.categoriesParser = categoriesParser;
+        this.excelExportService = excelExportService;
+        this.companyRepository = companyRepository;
     }
     @GetMapping("/getCitiesAndRegions")
     public List<City> getAllCitiesAndRegions() {
@@ -42,20 +52,41 @@ public class APIController {
         List<Category> rubrics = categoryRepository.findAll();
         return ResponseEntity.ok(rubrics);
     }
-    @PostMapping("/startParsing")
+    @PostMapping("/startParsingCities")
     public void startParsing() {
 
     }
-    @PostMapping("/stopParsing")
+    @PostMapping("/stopParsingCities")
     public void stopParsing() {
 
     }
-    @PostMapping("/exportDB")
-    public void ExportDB(){
-
+    @PostMapping("/exportCitiesDB")
+    public void ExportDB() throws IOException {
+        excelExportService.exportToExcel();
     }
     @PostMapping("/cleanCompanies")
     public void cleanCompanies() {
-
+        companyRepository.deleteAll();
     }
+    @PostMapping("/startParsingCategories")
+    public void startParsingCategories() throws IOException, InterruptedException {
+        categoriesParser.startParsing();
+    }
+    @GetMapping("/isCategoriesParsed")
+    public boolean isCategoriesParsed(){
+        return categoriesParser.isCategoriesParsed();
+    }
+
+    @GetMapping("/searchCategories")
+    public List<Category> searchCategories(@RequestParam String query) {
+        return categoryRepository.searchByName(query);
+    }
+    @GetMapping("/getActiveCategories")
+    public  List<Category> findAllByActive(){
+        return categoryRepository.findAllByActive(true);
+    }
+//    @GetMapping("/isCompaniesParsed")
+//    public boolean isCompaniesParsed(){
+//        return com.isCategoriesParsed();
+//    }
 }
