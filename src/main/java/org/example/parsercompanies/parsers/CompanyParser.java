@@ -10,11 +10,14 @@ import org.example.parsercompanies.repos.CategoryRepository;
 import org.example.parsercompanies.services.SettingsService;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -39,15 +42,19 @@ public class CompanyParser {
     private boolean onlyMainOKVED;
     private boolean onlyInOperation;
     private boolean partOfGovernmentProcurement;
-
+    private boolean rememberParsingPosition;
     private static final String INFO_FILE = "src/main/resources/info.json"; // Укажите путь к info.json
     private static final String SETTINGS_FILE = "src/main/resources/settingsConfig.json"; // Укажите путь к settingsConfig.json
     private final ObjectMapper objectMapper = new ObjectMapper();
     @Autowired
     private CategoryRepository categoryRepository;
+
     private WebDriver webDriver;
     private final AtomicBoolean isParsing = new AtomicBoolean(false);
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
+
+    // Установите здесь желаемое время ожидания в секундах
+    private static final int WAIT_TIMEOUT_SECONDS = 60;
 
     public void loadParsingInfo() throws IOException {
         File infoFile = new File(INFO_FILE);
@@ -69,6 +76,7 @@ public class CompanyParser {
             this.setOnlyMainOKVED(settings.isOnlyMainOKVED());
             this.setOnlyInOperation(settings.isOnlyInOperation());
             this.setPartOfGovernmentProcurement(settings.isPartOfGovernmentProcurement());
+            this.setRememberParsingPosition(settings.isRememberParsingPosition());
         } else {
             System.err.println("Settings file not found: " + SETTINGS_FILE);
         }
@@ -86,29 +94,42 @@ public class CompanyParser {
                 loadParsingInfo();
                 webDriver = new ChromeDriver(settingsService.getOptions());
                 webDriver.manage().window().maximize();
+
+                // Рекомендуется дождаться полной загрузки страницы перед дальнейшей работой
                 webDriver.get("https://checko.ru/search/advanced");
                 applyFilters();
                 extractAndSaveCompanyLinks();
             } catch (Exception e) {
                 System.err.println("Error during parsing: " + e.getMessage());
             } finally {
-//                stopParsing();
+
+                // stopParsing();
             }
         });
     }
 
     private void applyFilters() throws IOException, InterruptedException {
         if (!isParsing.get()) return;
-        applyCategories();
+        checkAndToggleCheckbox();
         if (!isParsing.get()) return;
         applyCities();
-        if(!isParsing.get()) return;
-        checkAndToggleCheckbox(webDriver,"input-9");
+        if (!isParsing.get()) return;
+        applyCategories();
+        if (!isParsing.get() && !partOfGovernmentProcurement) return;
+        checkAndTogglePartOfGovernmentProcurement();
 
     }
 
     private void applyCategories() throws IOException, InterruptedException {
-        webDriver.findElement(By.id("input-11")).click();
+        WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(WAIT_TIMEOUT_SECONDS));
+        Thread.sleep(2000);
+        // Ждём, пока кнопка/поле ввода с id="input-11" станет кликабельным, и кликаем
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("input-11")));
+        WebElement categoriesButton = wait.until(
+                ExpectedConditions.elementToBeClickable(By.id("input-11"))
+        );
+        categoriesButton.click();
+
         if (!isParsing.get()) return;
 
         List<Category> activeCategories = categoryRepository.findAllByActive(true);
@@ -119,42 +140,78 @@ public class CompanyParser {
         for (String categoryName : categoriesNames) {
             if (!isParsing.get()) break;
 
-            WebElement searchInput = webDriver.findElement(By.id("activity_search"));
-            searchInput.sendKeys(Keys.CONTROL + "a"); // Выделяем весь текст в поле
-            searchInput.sendKeys(Keys.DELETE); // Удаляем выделенный текст
+            // Ждём поле ввода для поиска активности
+            WebElement searchInput = wait.until(
+                    ExpectedConditions.visibilityOfElementLocated(By.id("activity_search"))
+            );
+
+            // Очищаем поле через комбинации
+            searchInput.sendKeys(Keys.CONTROL + "a");
+            searchInput.sendKeys(Keys.DELETE);
             searchInput.clear();
             searchInput.sendKeys(categoryName);
 
+            // Ждём появления списка результатов
             List<WebElement> results = webDriver.findElements(By.cssSelector(".v-treeview-node"));
             for (WebElement result : results) {
-                WebElement label = result.findElement(By.cssSelector(".v-treeview-node__label"));
-                String foundCategory = label.getText();
+                try {
+                    WebElement label = result.findElement(By.cssSelector(".v-treeview-node__label"));
+                    String foundCategory = label.getText();
 
-                if (foundCategory.contains(categoryName)) {
-                    WebElement checkbox = result.findElement(By.cssSelector(".v-treeview-node__checkbox"));
-                    String checkboxClass = checkbox.getAttribute("class");
-                    if (!checkboxClass.contains("mdi-checkbox-marked")) {
-                        checkbox.click();
+                    if (foundCategory.contains(categoryName)) {
+                        WebElement checkbox = result.findElement(By.cssSelector(".v-treeview-node__checkbox"));
+                        String checkboxClass = checkbox.getAttribute("class");
+                        if (!checkboxClass.contains("mdi-checkbox-marked")) {
+                            checkbox.click();
+                        }
+                        break;
                     }
-                    break;
+                } catch (NoSuchElementException ignored) {
                 }
             }
         }
-        webDriver.findElement(By.xpath("/html/body/main/div[2]/div/div[4]/div/div/div[2]/div/div/div[3]/div[2]/button")).click();
+
+        // Кнопка "Выбрать"
+        WebElement selectButton = wait.until(
+                ExpectedConditions.elementToBeClickable(
+                        By.xpath("/html/body/main/div[2]/div/div[4]/div/div/div[2]/div/div/div[3]/div[2]/button")
+                )
+        );
+        selectButton.click();
     }
 
-    private void applyCities() {
-        webDriver.findElement(By.id("input-13")).click();
+    private void applyCities() throws InterruptedException {
+        WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(WAIT_TIMEOUT_SECONDS));
+        Thread.sleep(2000);
+        wait.until(driver -> {
+            try {
+                WebElement element = wait.until(
+                        ExpectedConditions.presenceOfElementLocated(By.id("input-13"))
+                );
+                if (element.isDisplayed() && element.isEnabled()) {
+                    element.click();
+                    return true;
+                }
+                return false;
+            } catch (StaleElementReferenceException e) {
+                return false;
+            }
+        });
+
         for (String cityName : cities) {
             if (!isParsing.get()) break;
             try {
-                WebElement searchInput = webDriver.findElement(By.id("location_search"));
+                WebElement searchInput = wait.until(
+                        ExpectedConditions.visibilityOfElementLocated(By.id("location_search"))
+                );
+
+                searchInput.sendKeys(Keys.CONTROL + "a");
+                searchInput.sendKeys(Keys.DELETE);
                 searchInput.clear();
-                searchInput.sendKeys(Keys.CONTROL + "a"); // Выделяем весь текст в поле
-                searchInput.sendKeys(Keys.DELETE); // Удаляем выделенный текст
-                Thread.sleep((long)(parsingDelay * 1000));
+
                 searchInput.sendKeys(cityName);
 
+                // Ждём появления списка результатов
                 List<WebElement> results = webDriver.findElements(By.cssSelector(".v-treeview-node"));
                 for (WebElement result : results) {
                     WebElement label = result.findElement(By.cssSelector(".v-treeview-node__label"));
@@ -169,16 +226,27 @@ public class CompanyParser {
                         break;
                     }
                 }
-                Thread.sleep(parsingDelay.longValue()  * 1000);
+                // Имитация задержки между добавлением городов
+                Thread.sleep((long) (parsingDelay * 1000));
+
             } catch (Exception e) {
                 System.err.println("Error applying city filter: " + cityName);
             }
         }
-        webDriver.findElement(By.xpath("/html/body/main/div[2]/div/div[5]/div/div/div[2]/div/div/div[3]/div[2]/button")).click();
+
+        // Кнопка "Выбрать"
+        WebElement selectButton = wait.until(
+                ExpectedConditions.elementToBeClickable(
+                        By.xpath("/html/body/main/div[2]/div/div[5]/div/div/div[2]/div/div/div[3]/div[2]/button")
+                )
+        );
+        selectButton.click();
     }
 
     public void extractAndSaveCompanyLinks() {
         if (!isParsing.get()) return;
+
+        WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(WAIT_TIMEOUT_SECONDS));
 
         int page = currentPage != null ? currentPage.intValue() : 1;
         int pagesToParse = pagesDeep != null ? pagesDeep.intValue() : Integer.MAX_VALUE;
@@ -188,12 +256,20 @@ public class CompanyParser {
             try {
                 webDriver.get("https://checko.ru/search/advanced?page=" + page);
 
-                List<WebElement> notFoundElements = webDriver.findElements(By.xpath("/html/body/main/div[2]/div/div[2]/div/p"));
-                if (!notFoundElements.isEmpty() && notFoundElements.get(0).getText().contains("Не найдено ни одного юридического лица")) {
+                // Ждём, пока страница загрузится и таблица (или сообщение) появится
+                // Можно дождаться конкретного элемента таблицы:
+                wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("main")));
+
+                List<WebElement> notFoundElements = webDriver.findElements(
+                        By.xpath("/html/body/main/div[2]/div/div[2]/div/p")
+                );
+                if (!notFoundElements.isEmpty()
+                        && notFoundElements.get(0).getText().contains("Не найдено ни одного юридического лица")) {
                     System.out.println("No more companies found. Stopping pagination.");
                     break;
                 }
 
+                // Ждём пока таблица будет видна
                 List<WebElement> rows = webDriver.findElements(By.cssSelector("table.table-lg tbody tr"));
                 if (rows.isEmpty()) {
                     System.out.println("No rows found on page " + page);
@@ -201,7 +277,6 @@ public class CompanyParser {
                 }
 
                 List<String> companyLinks = new ArrayList<>();
-
                 for (WebElement row : rows) {
                     try {
                         WebElement linkElement = row.findElement(By.cssSelector("a.link"));
@@ -209,18 +284,19 @@ public class CompanyParser {
                         companyLinks.add(link);
                         System.out.println("Extracted link: " + link);
 
-                        // Сохраняем в базу данных
-                        // Здесь добавить сохранение в базу через репозиторий или другой сервис
+                        // Здесь добавить логику сохранения ссылок в базу данных, если нужно
                     } catch (Exception e) {
                         System.err.println("Error extracting link from row: " + e.getMessage());
                     }
                 }
 
                 System.out.println("Page " + page + " processed. Total links extracted: " + companyLinks.size());
-                page++;
-                saveProgress(page, false);
-
-                Thread.sleep(parsingDelay.longValue() * 1000);
+                if (rememberParsingPosition){
+                    page++;
+                    saveProgress(page, false);
+                }
+                // Задержка между страницами, если нужно
+                Thread.sleep((long) (parsingDelay * 1000));
 
             } catch (Exception e) {
                 System.err.println("Error processing page " + page + ": " + e.getMessage());
@@ -249,21 +325,44 @@ public class CompanyParser {
             webDriver.quit();
         }
     }
-    private void checkAndToggleCheckbox(WebDriver driver, String checkboxId) {
+
+    private void checkAndToggleCheckbox() throws InterruptedException {
+        WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(WAIT_TIMEOUT_SECONDS));
+        Thread.sleep(2000);
         try {
-            WebElement checkbox = driver.findElement(By.id(checkboxId));
+            WebElement checkbox = wait.until(
+                    ExpectedConditions.presenceOfElementLocated(By.id("input-9"))
+            );
             String isChecked = checkbox.getAttribute("aria-checked");
             if ("false".equals(isChecked)) {
-                try {
-                    checkbox.click();
-                    System.out.println("Checkbox with id " + checkboxId + " has been toggled.");
-                } catch (Exception e) {
-                    System.out.println("Click intercepted, trying JavaScript...");
-                    ((JavascriptExecutor) driver).executeScript("arguments[0].click();", checkbox);
-                    System.out.println("Checkbox with id " + checkboxId + " has been toggled using JavaScript.");
-                }
-            } else {
-                System.out.println("Checkbox with id " + checkboxId + " is already checked.");
+                WebElement label = wait.until(
+                        ExpectedConditions.presenceOfElementLocated(By.cssSelector("label[for=\"input-9\"]"))
+                );
+                label.click();
+            }
+        } catch (Exception e) {
+            System.err.println("Error interacting with checkbox: " + e.getMessage());
+        }
+    }
+    private void checkAndTogglePartOfGovernmentProcurement() throws InterruptedException {
+        WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(WAIT_TIMEOUT_SECONDS));
+        Thread.sleep(2000);
+        //гос закупки фильтр
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("/html/body/main/div[2]/div/div[1]/div/div/div/div[6]/div[7]/strong/button")));
+        WebElement governmentProcurement = wait.until(
+                ExpectedConditions.elementToBeClickable(By.xpath("/html/body/main/div[2]/div/div[1]/div/div/div/div[6]/div[7]/strong/button"))
+        );
+        governmentProcurement.click();
+        try {
+            WebElement checkbox = wait.until(
+                    ExpectedConditions.presenceOfElementLocated(By.id("input-55"))
+            );
+            String isChecked = checkbox.getAttribute("aria-checked");
+            if ("false".equals(isChecked)) {
+                WebElement label = wait.until(
+                        ExpectedConditions.presenceOfElementLocated(By.cssSelector("label[for=\"input-55\"]"))
+                );
+                label.click();
             }
         } catch (Exception e) {
             System.err.println("Error interacting with checkbox: " + e.getMessage());

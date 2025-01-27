@@ -538,8 +538,6 @@ function startParsing(){
         method:"POST"
     }).then(response => {
         //функция рендера таблицы городов
-        if (response.ok)logArea.textContent= "Компании собраны"
-        else logArea.textContent = "ошибка при парсинге"
         fetchCompanies()
     })
 }
