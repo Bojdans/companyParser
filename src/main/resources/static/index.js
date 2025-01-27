@@ -1,8 +1,8 @@
 let viewFilter = {
     rubric: ""
 }
-let rubrics = [];
 let logArea = document.getElementById("log-area")
+
 function switchTab(tabId) {
     const tabs = document.querySelectorAll('.content');
     const buttons = document.querySelectorAll('.tab-bar button');
@@ -17,6 +17,7 @@ function switchTab(tabId) {
 // Генерация рубрик в таблице
 function renderSideRubrics(rubricsSide) {
     const rubricTableBody = document.querySelector("#rubric-table-side tbody");
+    rubricTableBody.innerHTML = ""
     rubricsSide.forEach(rubric => {
         const row = document.createElement("tr");
         row.innerHTML = `
@@ -222,7 +223,7 @@ function loadSettingsFromServer() {
         })
         .catch((error) => {
 
-            
+
         });
 }
 
@@ -303,7 +304,7 @@ function refreshSettings() {
             if (!response.ok) {
                 throw new Error('Failed to save settings');
             }
-            
+            loadRubricsFromServer()
         })
         .catch(error => {
 
@@ -334,161 +335,208 @@ document.addEventListener('DOMContentLoaded', () => {
     loadSettingsFromServer();
 });
 
-function saveRubrics() {
-    const updatedRubrics = [];
-    const rows = document.querySelectorAll("#rubric-table tr");
+// Глобальный массив для хранения рубрик
+let rubrics = [];
 
-    rows.forEach((row) => {
-        const rubric = {
-            id: parseInt(row.querySelector("input[type='hidden']").value, 10),
-            name: row.querySelector("input[type='text']").value,
-            active: row.querySelector("input[type='checkbox']").checked,
-            level: parseInt(row.querySelector("input[type='number']").value, 10),
-        };
-        updatedRubrics.push(rubric);
+/**
+ * Загрузка рубрик с сервера, заполнение массива rubrics
+ * и отрисовка таблицы.
+ */
+function loadRubricsFromServer() {
+    fetch("/api/getCategories", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+    })
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error("Failed to fetch rubrics");
+            }
+            return response.json();
+        })
+        .then((data) => {
+            // Здесь data — массив объектов вида {id, name, active, level}
+            rubrics = data;
+            console.log("Загруженные rubrics:", rubrics);
+
+            renderRubricTable(rubrics);
+
+            // Опционально: загрузить и отобразить "активные" рубрики (пример)
+            fetch("/api/getActiveCategories")
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error("Failed to fetch active rubrics");
+                    }
+                    return response.json();
+                })
+                .then((activeData) => {
+                    console.log("Активные рубрики:", activeData);
+                    renderSideRubrics(activeData);
+                })
+                .catch((err) => {
+                    console.error("Ошибка при загрузке активных рубрик:", err);
+                });
+        })
+        .catch((error) => {
+            console.error("Ошибка при загрузке рубрик:", error);
+        });
+}
+
+/**
+ * Рендерим таблицу рубрик. В каждой строке создаём <input>
+ * для 'name', 'active' (checkbox), 'level' (number).
+ * Обратите внимание, что при onchange вызываем updateRubric(rubric.id, ...)
+ */
+function renderRubricTable(rubricsData) {
+    console.log("Рендер таблицы рубрик");
+    const tableBody = document.getElementById("rubric-table");
+    tableBody.innerHTML = "";
+
+    rubricsData.forEach((rubric) => {
+        // Каждая rubric имеет поля: { id, name, active, level }
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+          <td>
+            <input type="hidden" value="${rubric.id}" />
+            <input 
+              type="text"
+              value="${rubric.name}"
+              onchange="updateRubric(${rubric.id}, 'name', this.value)"
+            />
+          </td>
+          <td class="checkbox-cell">
+            <input 
+              type="checkbox" 
+              ${rubric.active ? "checked" : ""}
+              onchange="updateRubric(${rubric.id}, 'active', this.checked)"
+            />
+          </td>
+          <td>
+            <input 
+              type="number"
+              min="1" 
+              max="5"
+              value="${rubric.level}"
+              onchange="updateRubric(${rubric.id}, 'level', parseInt(this.value))"
+            />
+          </td>
+        `;
+        tableBody.appendChild(row);
     });
+}
+addEventListener("DOMContentLoaded",()=>{
+    loadRubricsFromServer()
+})
+/**
+ * Функция обновления рубрики в массиве rubrics по её ID.
+ * Мы ищем нужный объект по rubric.id и выставляем новое значение.
+ */
+function updateRubric(rubricId, field, newValue) {
+    // Ищем индекс в массиве rubrics по совпадению id
+    const index = rubrics.findIndex(r => r.id === rubricId);
+    if (index === -1) {
+        console.error(`Rubric with id=${rubricId} не найден`);
+        return;
+    }
 
-    // Отправка данных на сервер
+    // Обновляем нужное поле (name, active, level) в объекте
+    rubrics[index][field] = newValue;
+    console.log("Обновили rubrics:", rubrics);
+}
+
+/**
+ * Сохранение (обновление) рубрик на сервере.
+ * Отправляем массив rubrics (со всеми изменениями) методом POST.
+ */
+function saveRubrics() {
+    console.log("Сохраняем (обновляем) рубрики на сервер:", rubrics);
+
     fetch("/api/updateCategories", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
         },
-        body: JSON.stringify(updatedRubrics),
+        body: JSON.stringify(rubrics),
     })
         .then((response) => {
             if (!response.ok) {
                 throw new Error("Failed to update rubrics");
             }
-            
+            console.log("Успешно обновили рубрики на сервере");
+            // Если нужно, можно перезагрузить таблицу или показать уведомление
+            // loadRubricsFromServer();
         })
         .catch((error) => {
-
-            
+            console.error("Ошибка при обновлении рубрик:", error);
         });
 }
 
-function updateRubric(index, key, value) {
-    rubrics[index][key] = value; // Обновляем локальные данные
-}
-
-function renderRubricTable(rubrics) {
-    console.log("рендер таблицы")
-    const tableBody = document.getElementById("rubric-table");
-    tableBody.innerHTML = ""; // Очищаем таблицу перед повторным рендерингом
-    rubrics.forEach((rubric) => {
-        const row = document.createElement("tr");
-
-        row.innerHTML = `
-        <td>
-          <input type="hidden" value="${rubric.id}" />
-          <input type="text" value="${rubric.name}" onchange="updateRubric(${rubric.id}, 'name', this.value)" />
-        </td>
-        <td class="checkbox-cell">
-          <input type="checkbox" ${rubric.active ? "checked" : ""} onchange="updateRubric(${rubric.id}, 'active', this.checked)" />
-        </td>
-        <td>
-          <input type="number" min="1" max="5" value="${rubric.level}" onchange="updateRubric(${rubric.id}, 'level', parseInt(this.value))" />
-        </td>
-      `;
-
-        tableBody.appendChild(row);
-    });
-}
-
-function loadRubricsFromServer() {
-    fetch('/api/getCategories', {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-    })
-        .then((response) => {
-            if (!response.ok) {
-                throw new Error('Failed to fetch rubrics');
-            }
-            return response.json();
-        })
-        .then((data) => {
-            rubrics = data; // Заполняем глобальный массив rubrics данными с сервера
-            renderRubricTable(rubrics); // Отображаем таблицу
-            fetch("/api/getActiveCategories").then((response) => {
-                if (!response.ok) {
-                    throw new Error('Failed to fetch rubrics');
-                }
-                return response.json();
-            })
-                .then((data) => {
-                     // Заполняем глобальный массив rubrics данными с сервера
-                    renderSideRubrics(data); // Отображаем таблицу
-                })
-        })
-        .catch((error) => {
-            
-        });
-}
-
-// Вызываем загрузку рубрик при загрузке страницы
-document.addEventListener('DOMContentLoaded', () => {
-    loadRubricsFromServer();
-});
-
-// Attach event listener for the search input
+/**
+ * Пример функции поиска. Ищем по полю name в локальном массиве rubrics.
+ * Если rubrics пуст, можно либо ничего не делать, либо сделать запрос на сервер.
+ */
 function searchCategories() {
-    const query = document.getElementById("rubric-search").value;
+    const query = document
+        .getElementById("rubric-search")
+        .value.trim()
+        .toLowerCase();
 
-    fetch(`/api/searchCategories?query=${encodeURIComponent(query)}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to fetch categories');
-            }
-            return response.json();
-        })
-        .then(categories => {
-            console.log(categories)
-            renderRubricTable(categories);
-        })
-        .catch(error => {
-            console.error("Error fetching categories:", error);
-        });
+    if (rubrics && rubrics.length > 0) {
+        const filtered = rubrics.filter(r =>
+            r.name.toLowerCase().includes(query)
+        );
+        renderRubricTable(filtered);
+    } else {
+        // Если rubrics пуст, можно (при желании) обратиться к серверу:
+        /*
+        fetch(`/api/searchCategories?query=${encodeURIComponent(query)}`)
+            .then(resp => resp.json())
+            .then(filtered => renderRubricTable(filtered))
+            .catch(err => console.error("Ошибка при поиске:", err));
+        */
+    }
 }
+
 
 document.getElementById("rubric-search").addEventListener("input", searchCategories);
 
-function generateMenu(){
+function generateMenu() {
     logArea.textContent = "Сбор категорий...."
-    fetch('api/startParsingCategories',{
-        method:"POST"
+    fetch('api/startParsingCategories', {
+        method: "POST"
     }).then(response => {
         if (!response.ok) {
             throw new Error('Failed to fetch categories');
-        }else {
+        } else {
             logArea.textContent = "Категории собраны"
             loadRubricsFromServer()
         }
     })
 }
-function startExport(){
-    fetch('api/exportCompaniesDB',{
-        method:"POST"
+
+function startExport() {
+    fetch('api/exportCompaniesDB', {
+        method: "POST"
     }).then(response => {
-        logArea.textContent= "Экспорт завершён"
+        logArea.textContent = "Экспорт завершён"
     })
 }
-function cleanCompanies(){
-    fetch('api/cleanCompanies',{
-        method:"POST"
+
+function cleanCompanies() {
+    fetch('api/cleanCompanies', {
+        method: "POST"
     }).then(response => {
         //функция рендера таблицы городов
         fetchCompanies().then(response => {
-            if (response.ok){
-                logArea.textContent= "Очищено"
-            }else{
-                logArea.textContent= "Ошибка при отображении компаний"
+            if (response.ok) {
+                logArea.textContent = "Очищено"
+            } else {
+                logArea.textContent = "Ошибка при отображении компаний"
             }
         })
     })
 }
+
 async function fetchCompanies() {
     const response = await fetch('http://localhost:8081/api/getAllCompanies');
     const companies = await response.json();
@@ -532,24 +580,72 @@ async function fetchCompanies() {
 
 window.onload = fetchCompanies;
 
-function startParsing(){
-    logArea.textContent = "парсинг компаний..."
-    fetch('api/startParsingCompanies',{
-        method:"POST"
+let pollingIntervalId = null; // будет хранить идентификатор setInterval
+
+function startParsing() {
+    logArea.textContent = "Парсинг компаний...";
+
+    // Запускаем парсинг на сервере
+    fetch('api/startParsingCompanies', {
+        method: "POST"
+    })
+        .then(response => {
+            // Когда запрос завершится, начинаем периодический опрос
+            startPollingStatus();
+            // Если нужно, можно вызывать какую-то логику рендера, например fetchCompanies()
+            // fetchCompanies();
+        })
+        .catch(err => {
+            console.error("Ошибка при старте парсинга:", err);
+        });
+}
+
+// Функция, которая раз в N секунд опрашивает сервер о статусе
+function startPollingStatus() {
+    // На всякий случай, если вдруг был запущен предыдущий опрос, останавливаем его
+    stopPollingStatus();
+
+    // Интервал опроса в миллисекундах, например 2000 мс = 2 секунды
+    const intervalMs = 2000;
+    setTimeout(() => {
+        // Периодический опрос
+        pollingIntervalId = setInterval(() => {
+            fetch('api/parsingStatus')
+                .then(response => response.json())
+                .then(data => {
+                    const {isParsed} = data;
+
+                    // Если сервер говорит, что парсинг закончен, прекращаем опрос
+                    if (isParsed) {
+                        logArea.textContent += "\nПарсинг завершён";
+                        stopPollingStatus();
+                    }
+                })
+                .catch(err => {
+                    console.error("Ошибка при получении статуса парсинга:", err);
+                });
+        }, intervalMs);
+    }, 5000)
+}
+
+// Останавливаем периодический опрос
+function stopPollingStatus() {
+    if (pollingIntervalId) {
+        clearInterval(pollingIntervalId);
+        pollingIntervalId = null;
+    }
+}
+
+function stopParsing() {
+    fetch('api/stopParsingCompanies', {
+        method: "POST"
     }).then(response => {
-        //функция рендера таблицы городов
-        fetchCompanies()
     })
 }
-function stopParsing(){
-    fetch('api/stopParsingCompanies',{
-        method:"POST"
-    }).then(response => {
-    })
-}
-function shutdown(){
-    fetch('api/shutdown',{
-        method:"POST"
+
+function shutdown() {
+    fetch('api/shutdown', {
+        method: "POST"
     }).then(response => {
     })
 }

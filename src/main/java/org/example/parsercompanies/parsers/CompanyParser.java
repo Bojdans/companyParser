@@ -36,6 +36,7 @@ public class CompanyParser {
     private Long pagesDeep;
     private Long currentPage;
     private boolean companiesParsed;
+    private boolean linksOfCompaniesParsed;
     private Double parsingDelay;
     private List<String> cities;
     private List<String> regions;
@@ -62,6 +63,7 @@ public class CompanyParser {
             InfoJson info = objectMapper.readValue(infoFile, InfoJson.class);
             this.setCurrentPage(info.getCurrentPage());
             this.setCompaniesParsed(info.isCompaniesParsed());
+            this.setLinksOfCompaniesParsed(info.isLinksParsed());
         } else {
             System.err.println("Info file not found: " + INFO_FILE);
         }
@@ -87,7 +89,7 @@ public class CompanyParser {
             System.out.println("Parsing is already running.");
             return;
         }
-
+        companiesParsed = false;
         isParsing.set(true);
         executorService.submit(() -> {
             try {
@@ -102,8 +104,8 @@ public class CompanyParser {
             } catch (Exception e) {
                 System.err.println("Error during parsing: " + e.getMessage());
             } finally {
-
-                // stopParsing();
+                companiesParsed = true;
+                 stopParsing();
             }
         });
     }
@@ -245,16 +247,13 @@ public class CompanyParser {
 
     public void extractAndSaveCompanyLinks() {
         if (!isParsing.get()) return;
-
+        System.out.println("Переходим к парсингу...");
+        System.out.println(currentPage);
         WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(WAIT_TIMEOUT_SECONDS));
 
-        int page = currentPage != null ? currentPage.intValue() : 1;
-        int pagesToParse = pagesDeep != null ? pagesDeep.intValue() : Integer.MAX_VALUE;
-        companiesParsed = false;
-
-        while (isParsing.get() && page <= pagesToParse) {
+        while (isParsing.get() && currentPage <= pagesDeep) {
             try {
-                webDriver.get("https://checko.ru/search/advanced?page=" + page);
+                webDriver.get("https://checko.ru/search/advanced?page=" + currentPage);
 
                 // Ждём, пока страница загрузится и таблица (или сообщение) появится
                 // Можно дождаться конкретного элемента таблицы:
@@ -270,9 +269,9 @@ public class CompanyParser {
                 }
 
                 // Ждём пока таблица будет видна
-                List<WebElement> rows = webDriver.findElements(By.cssSelector("table.table-lg tbody tr"));
+                List<WebElement> rows = webDriver.findElement(By.className("select-section")).findElements(By.cssSelector("table.table-lg tbody tr"));
                 if (rows.isEmpty()) {
-                    System.out.println("No rows found on page " + page);
+                    System.out.println("No rows found on currentPage " + currentPage);
                     break;
                 }
 
@@ -285,34 +284,38 @@ public class CompanyParser {
                         System.out.println("Extracted link: " + link);
 
                         // Здесь добавить логику сохранения ссылок в базу данных, если нужно
+
                     } catch (Exception e) {
                         System.err.println("Error extracting link from row: " + e.getMessage());
                     }
                 }
 
-                System.out.println("Page " + page + " processed. Total links extracted: " + companyLinks.size());
+                System.out.println("Page " + currentPage + " processed. Total links extracted: " + companyLinks.size());
+                currentPage++;
                 if (rememberParsingPosition){
-                    page++;
-                    saveProgress(page, false);
+                    saveProgress(currentPage, false,false);
                 }
                 // Задержка между страницами, если нужно
                 Thread.sleep((long) (parsingDelay * 1000));
 
             } catch (Exception e) {
-                System.err.println("Error processing page " + page + ": " + e.getMessage());
+                System.err.println("Error processing currentPage " + currentPage + ": " + e.getMessage());
                 break;
             }
         }
+        setLinksOfCompaniesParsed(true);
 
-        companiesParsed = true;
-        saveProgress(page, true);
+        if (rememberParsingPosition){
+            saveProgress(currentPage, true,true);
+        }
     }
 
-    private void saveProgress(int currentPage, boolean isCompleted) {
+    private void saveProgress(Long currentPage, boolean isCompleted,boolean isLinksParsed) {
         try {
             InfoJson infoJson = new InfoJson();
-            infoJson.setCurrentPage((long) currentPage);
+            infoJson.setCurrentPage(currentPage);
             infoJson.setCompaniesParsed(isCompleted);
+            infoJson.setLinksParsed(isLinksParsed);
             objectMapper.writeValue(new File(INFO_FILE), infoJson);
         } catch (IOException e) {
             System.err.println("Error saving progress: " + e.getMessage());

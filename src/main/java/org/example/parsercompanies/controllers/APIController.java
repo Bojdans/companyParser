@@ -105,8 +105,8 @@ public class APIController {
     public List<Company> getAllCompanies() {
         return companyRepository.findAll();
     }
-//    @GetMapping("/isCompaniesParsed")
-//    public boolean isCompaniesParsed(){
-//        return com.isCategoriesParsed();
-//    }
+    @GetMapping("/parsingStatus")
+    public boolean parsingStatus(){
+        return companyParser.isCompaniesParsed();
+    }
 }

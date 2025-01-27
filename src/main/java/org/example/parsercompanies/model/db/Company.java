@@ -113,4 +113,30 @@ public class Company {
         this.numberOfEmployees = numberOfEmployees;
         this.okvedCode = okvedCode;
     }
+    public Company(Long id,String organizationName, String founder, String founderPosition, String inn, String ogrn, String okatoCode, BigDecimal authorizedCapital, String legalAddress, String city, String phones, String email, String website, BigDecimal revenue, BigDecimal profit, BigDecimal capital, BigDecimal taxes, BigDecimal insuranceContributions, String governmentPurchasesCustomer, String governmentPurchasesSupplier, Boolean activeCompany, String registrationDate, Integer numberOfEmployees, String okvedCode) {
+        this.organizationName = organizationName;
+        this.founder = founder;
+        this.founderPosition = founderPosition;
+        this.inn = inn;
+        this.ogrn = ogrn;
+        this.okatoCode = okatoCode;
+        this.authorizedCapital = authorizedCapital;
+        this.legalAddress = legalAddress;
+        this.city = city;
+        this.phones = phones;
+        this.email = email;
+        this.website = website;
+        this.revenue = revenue;
+        this.profit = profit;
+        this.capital = capital;
+        this.taxes = taxes;
+        this.insuranceContributions = insuranceContributions;
+        this.governmentPurchasesCustomer = governmentPurchasesCustomer;
+        this.governmentPurchasesSupplier = governmentPurchasesSupplier;
+        this.activeCompany = activeCompany;
+        this.registrationDate = registrationDate;
+        this.numberOfEmployees = numberOfEmployees;
+        this.okvedCode = okvedCode;
+        this.id = id;
+    }
 }

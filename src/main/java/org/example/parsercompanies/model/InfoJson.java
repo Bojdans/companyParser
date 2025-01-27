@@ -7,4 +7,5 @@ import lombok.Data;
 public class InfoJson {
     private Long currentPage;
     private boolean companiesParsed;
+    private boolean linksParsed;
 }
