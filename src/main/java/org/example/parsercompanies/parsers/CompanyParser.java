@@ -6,7 +6,9 @@ import lombok.NoArgsConstructor;
 import org.example.parsercompanies.model.InfoJson;
 import org.example.parsercompanies.model.SettingsConfig;
 import org.example.parsercompanies.model.db.Category;
+import org.example.parsercompanies.model.db.Company;
 import org.example.parsercompanies.repos.CategoryRepository;
+import org.example.parsercompanies.repos.CompanyRepository;
 import org.example.parsercompanies.services.SettingsService;
 import org.openqa.selenium.*;
 import org.openqa.selenium.NoSuchElementException;
@@ -62,6 +64,8 @@ public class CompanyParser {
 
     // Время ожидания в секундах
     private static final int WAIT_TIMEOUT_SECONDS = 30;
+    @Autowired
+    private CompanyRepository companyRepository;
 
     /**
      * Загружаем инфо о текущей странице из info.json (currentPage, companiesParsed, linksParsed)
@@ -375,6 +379,7 @@ public class CompanyParser {
                         companyLinks.add(link);
                         System.out.println("Extracted link: " + link);
                         // Здесь можно сохранить в БД, если нужно
+                        companyRepository.save(new Company(link));
                     } catch (Exception e) {
                         System.err.println("Error extracting link from row: " + e.getMessage());
                     }

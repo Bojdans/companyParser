@@ -139,4 +139,8 @@ public class Company {
         this.okvedCode = okvedCode;
         this.id = id;
     }
+
+    public Company(String url) {
+        this.url = url;
+    }
 }
