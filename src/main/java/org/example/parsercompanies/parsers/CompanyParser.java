@@ -9,6 +9,7 @@ import org.example.parsercompanies.model.db.Category;
 import org.example.parsercompanies.repos.CategoryRepository;
 import org.example.parsercompanies.services.SettingsService;
 import org.openqa.selenium.*;
+import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
@@ -18,11 +19,8 @@ import org.springframework.stereotype.Component;
 import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -44,9 +42,11 @@ public class CompanyParser {
     private boolean onlyInOperation;
     private boolean partOfGovernmentProcurement;
     private boolean rememberParsingPosition;
-    private static final String INFO_FILE = "src/main/resources/info.json"; // Укажите путь к info.json
-    private static final String SETTINGS_FILE = "src/main/resources/settingsConfig.json"; // Укажите путь к settingsConfig.json
+
+    private static final String INFO_FILE = "src/main/resources/info.json";
+    private static final String SETTINGS_FILE = "src/main/resources/settingsConfig.json";
     private final ObjectMapper objectMapper = new ObjectMapper();
+
     @Autowired
     private CategoryRepository categoryRepository;
 
@@ -97,40 +97,52 @@ public class CompanyParser {
                 webDriver = new ChromeDriver(settingsService.getOptions());
                 webDriver.manage().window().maximize();
 
-                // Рекомендуется дождаться полной загрузки страницы перед дальнейшей работой
+                // Переходим на страницу и сразу проверяем 500-ю ошибку
                 webDriver.get("https://checko.ru/search/advanced");
+                checkForServerErrorAndRefreshIfNeeded();
+
                 applyFilters();
                 extractAndSaveCompanyLinks();
             } catch (Exception e) {
                 System.err.println("Error during parsing: " + e.getMessage());
             } finally {
                 companiesParsed = true;
-                 stopParsing();
+                stopParsing();
             }
         });
     }
 
     private void applyFilters() throws IOException, InterruptedException {
         if (!isParsing.get()) return;
+
         checkAndToggleCheckbox();
+        checkForServerErrorAndRefreshIfNeeded(); // проверяем 500-ю ошибку
+
         if (!isParsing.get()) return;
         applyCities();
+        checkForServerErrorAndRefreshIfNeeded();
+
         if (!isParsing.get()) return;
         applyCategories();
-        if (!isParsing.get() && !partOfGovernmentProcurement) return;
-        checkAndTogglePartOfGovernmentProcurement();
+        checkForServerErrorAndRefreshIfNeeded();
 
+        if (!isParsing.get()) return;
+        if (partOfGovernmentProcurement) {
+            checkAndTogglePartOfGovernmentProcurement();
+            checkForServerErrorAndRefreshIfNeeded();
+        }
     }
 
     private void applyCategories() throws IOException, InterruptedException {
         WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(WAIT_TIMEOUT_SECONDS));
         Thread.sleep(2000);
-        // Ждём, пока кнопка/поле ввода с id="input-11" станет кликабельным, и кликаем
+
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("input-11")));
         WebElement categoriesButton = wait.until(
                 ExpectedConditions.elementToBeClickable(By.id("input-11"))
         );
         categoriesButton.click();
+        checkForServerErrorAndRefreshIfNeeded();
 
         if (!isParsing.get()) return;
 
@@ -142,18 +154,15 @@ public class CompanyParser {
         for (String categoryName : categoriesNames) {
             if (!isParsing.get()) break;
 
-            // Ждём поле ввода для поиска активности
             WebElement searchInput = wait.until(
                     ExpectedConditions.visibilityOfElementLocated(By.id("activity_search"))
             );
 
-            // Очищаем поле через комбинации
             searchInput.sendKeys(Keys.CONTROL + "a");
             searchInput.sendKeys(Keys.DELETE);
-            searchInput.clear();
             searchInput.sendKeys(categoryName);
 
-            // Ждём появления списка результатов
+            // Ищем результаты
             List<WebElement> results = webDriver.findElements(By.cssSelector(".v-treeview-node"));
             for (WebElement result : results) {
                 try {
@@ -165,6 +174,7 @@ public class CompanyParser {
                         String checkboxClass = checkbox.getAttribute("class");
                         if (!checkboxClass.contains("mdi-checkbox-marked")) {
                             checkbox.click();
+                            checkForServerErrorAndRefreshIfNeeded();
                         }
                         break;
                     }
@@ -180,11 +190,13 @@ public class CompanyParser {
                 )
         );
         selectButton.click();
+        checkForServerErrorAndRefreshIfNeeded();
     }
 
     private void applyCities() throws InterruptedException {
         WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(WAIT_TIMEOUT_SECONDS));
         Thread.sleep(2000);
+
         wait.until(driver -> {
             try {
                 WebElement element = wait.until(
@@ -200,6 +212,8 @@ public class CompanyParser {
             }
         });
 
+        checkForServerErrorAndRefreshIfNeeded();
+
         for (String cityName : cities) {
             if (!isParsing.get()) break;
             try {
@@ -209,11 +223,11 @@ public class CompanyParser {
 
                 searchInput.sendKeys(Keys.CONTROL + "a");
                 searchInput.sendKeys(Keys.DELETE);
-                searchInput.clear();
 
                 searchInput.sendKeys(cityName);
+                checkForServerErrorAndRefreshIfNeeded();
 
-                // Ждём появления списка результатов
+                // Ждём появления списка
                 List<WebElement> results = webDriver.findElements(By.cssSelector(".v-treeview-node"));
                 for (WebElement result : results) {
                     WebElement label = result.findElement(By.cssSelector(".v-treeview-node__label"));
@@ -224,25 +238,25 @@ public class CompanyParser {
                         String checkboxClass = checkbox.getAttribute("class");
                         if (!checkboxClass.contains("mdi-checkbox-marked")) {
                             checkbox.click();
+                            checkForServerErrorAndRefreshIfNeeded();
                         }
                         break;
                     }
                 }
-                // Имитация задержки между добавлением городов
                 Thread.sleep((long) (parsingDelay * 1000));
 
             } catch (Exception e) {
-                System.err.println("Error applying city filter: " + cityName);
+                System.err.println("Error applying city filter: " + cityName + " => " + e.getMessage());
             }
         }
 
-        // Кнопка "Выбрать"
         WebElement selectButton = wait.until(
                 ExpectedConditions.elementToBeClickable(
                         By.xpath("/html/body/main/div[2]/div/div[5]/div/div/div[2]/div/div/div[3]/div[2]/button")
                 )
         );
         selectButton.click();
+        checkForServerErrorAndRefreshIfNeeded();
     }
 
     public void extractAndSaveCompanyLinks() {
@@ -254,10 +268,10 @@ public class CompanyParser {
         while (isParsing.get() && currentPage <= pagesDeep) {
             try {
                 webDriver.get("https://checko.ru/search/advanced?page=" + currentPage);
+                checkForServerErrorAndRefreshIfNeeded();
 
-                // Ждём, пока страница загрузится и таблица (или сообщение) появится
-                // Можно дождаться конкретного элемента таблицы:
                 wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("main")));
+                checkForServerErrorAndRefreshIfNeeded();
 
                 List<WebElement> notFoundElements = webDriver.findElements(
                         By.xpath("/html/body/main/div[2]/div/div[2]/div/p")
@@ -268,8 +282,11 @@ public class CompanyParser {
                     break;
                 }
 
-                // Ждём пока таблица будет видна
-                List<WebElement> rows = webDriver.findElement(By.className("select-section")).findElements(By.cssSelector("table.table-lg tbody tr"));
+                // Находим таблицу
+                List<WebElement> rows = webDriver
+                        .findElement(By.className("select-section"))
+                        .findElements(By.cssSelector("table.table-lg tbody tr"));
+
                 if (rows.isEmpty()) {
                     System.out.println("No rows found on currentPage " + currentPage);
                     break;
@@ -282,20 +299,19 @@ public class CompanyParser {
                         String link = linkElement.getAttribute("href");
                         companyLinks.add(link);
                         System.out.println("Extracted link: " + link);
-
-                        // Здесь добавить логику сохранения ссылок в базу данных, если нужно
-
+                        // Сохраняем в БД, если нужно
                     } catch (Exception e) {
                         System.err.println("Error extracting link from row: " + e.getMessage());
                     }
+
+                    checkForServerErrorAndRefreshIfNeeded();
                 }
 
                 System.out.println("Page " + currentPage + " processed. Total links extracted: " + companyLinks.size());
                 currentPage++;
                 if (rememberParsingPosition){
-                    saveProgress(currentPage, false,false);
+                    saveProgress(currentPage, false, false);
                 }
-                // Задержка между страницами, если нужно
                 Thread.sleep((long) (parsingDelay * 1000));
 
             } catch (Exception e) {
@@ -310,7 +326,7 @@ public class CompanyParser {
         }
     }
 
-    private void saveProgress(Long currentPage, boolean isCompleted,boolean isLinksParsed) {
+    private void saveProgress(Long currentPage, boolean isCompleted, boolean isLinksParsed) {
         try {
             InfoJson infoJson = new InfoJson();
             infoJson.setCurrentPage(currentPage);
@@ -332,43 +348,76 @@ public class CompanyParser {
     private void checkAndToggleCheckbox() throws InterruptedException {
         WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(WAIT_TIMEOUT_SECONDS));
         Thread.sleep(2000);
-        try {
-            WebElement checkbox = wait.until(
-                    ExpectedConditions.presenceOfElementLocated(By.id("input-9"))
+        WebElement checkbox = wait.until(
+                ExpectedConditions.presenceOfElementLocated(By.id("input-9"))
+        );
+        checkForServerErrorAndRefreshIfNeeded();
+
+        String isChecked = checkbox.getAttribute("aria-checked");
+        if ("false".equals(isChecked)) {
+            WebElement label = wait.until(
+                    ExpectedConditions.presenceOfElementLocated(By.cssSelector("label[for=\"input-9\"]"))
             );
-            String isChecked = checkbox.getAttribute("aria-checked");
-            if ("false".equals(isChecked)) {
-                WebElement label = wait.until(
-                        ExpectedConditions.presenceOfElementLocated(By.cssSelector("label[for=\"input-9\"]"))
-                );
-                label.click();
-            }
-        } catch (Exception e) {
-            System.err.println("Error interacting with checkbox: " + e.getMessage());
+            label.click();
+            checkForServerErrorAndRefreshIfNeeded();
         }
     }
+
     private void checkAndTogglePartOfGovernmentProcurement() throws InterruptedException {
         WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(WAIT_TIMEOUT_SECONDS));
         Thread.sleep(2000);
-        //гос закупки фильтр
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("/html/body/main/div[2]/div/div[1]/div/div/div/div[6]/div[7]/strong/button")));
+
         WebElement governmentProcurement = wait.until(
-                ExpectedConditions.elementToBeClickable(By.xpath("/html/body/main/div[2]/div/div[1]/div/div/div/div[6]/div[7]/strong/button"))
+                ExpectedConditions.elementToBeClickable(
+                        By.xpath("/html/body/main/div[2]/div/div[1]/div/div/div/div[6]/div[7]/strong/button")
+                )
         );
         governmentProcurement.click();
-        try {
-            WebElement checkbox = wait.until(
-                    ExpectedConditions.presenceOfElementLocated(By.id("input-55"))
+        checkForServerErrorAndRefreshIfNeeded();
+
+        WebElement checkbox = wait.until(
+                ExpectedConditions.presenceOfElementLocated(By.id("input-55"))
+        );
+        checkForServerErrorAndRefreshIfNeeded();
+
+        String isChecked = checkbox.getAttribute("aria-checked");
+        if ("false".equals(isChecked)) {
+            WebElement label = wait.until(
+                    ExpectedConditions.presenceOfElementLocated(By.cssSelector("label[for=\"input-55\"]"))
             );
-            String isChecked = checkbox.getAttribute("aria-checked");
-            if ("false".equals(isChecked)) {
-                WebElement label = wait.until(
-                        ExpectedConditions.presenceOfElementLocated(By.cssSelector("label[for=\"input-55\"]"))
-                );
-                label.click();
+            label.click();
+            checkForServerErrorAndRefreshIfNeeded();
+        }
+    }
+
+    /**
+     * Проверяет, не появился ли на странице блок с текстом "500 Internal Server Error".
+     * Если появился — несколько раз пытается перезагрузить страницу, пока ошибка не пропадёт.
+     */
+    private void checkForServerErrorAndRefreshIfNeeded() throws InterruptedException {
+        final int MAX_REFRESH_ATTEMPTS = 5;
+        int attempt = 0;
+
+        while (attempt < MAX_REFRESH_ATTEMPTS && isParsing.get()) {
+            // Ищем элемент <pre>, в тексте которого есть "500 Internal Server Error"
+            List<WebElement> errorElements = webDriver.findElements(
+                    By.xpath("//pre[contains(text(), '500 Internal Server Error')]")
+            );
+            if (errorElements.isEmpty()) {
+                // Ошибки нет — выходим из метода
+                return;
             }
-        } catch (Exception e) {
-            System.err.println("Error interacting with checkbox: " + e.getMessage());
+
+            // Если элемент найден, перезагружаем страницу
+            System.err.println("Страница вернула 500 Internal Server Error. Перезагружаем страницу... Попытка " + (attempt + 1));
+            Thread.sleep(2000); // небольшая пауза перед refresh
+            webDriver.navigate().refresh();
+            attempt++;
+        }
+
+        if (attempt >= MAX_REFRESH_ATTEMPTS) {
+            System.err.println("Не удалось избавиться от 500 Internal Server Error после "
+                    + MAX_REFRESH_ATTEMPTS + " попыток. Продолжаем...");
         }
     }
 }

@@ -1,1 +1,18 @@
-{"onlyInOperation":true,"partOfGovernmentProcurement":true,"pagesDeep":10,"parsingDelay":1,"autoExcelOpen":true,"onlyMainOKVED":true,"proxy":"","proxyLogin":"","proxyPassword":"","cities":["Фокино","Волгоград","Фокино"],"regions":[],"rememberParsingPosition":true}
+{
+  "onlyInOperation": true,
+  "partOfGovernmentProcurement": true,
+  "pagesDeep": 10,
+  "parsingDelay": 1,
+  "autoExcelOpen": true,
+  "onlyMainOKVED": true,
+  "proxy": "",
+  "proxyLogin": "",
+  "proxyPassword": "",
+  "cities": [
+    "Фокино",
+    "Волгоград",
+    "Фокино"
+  ],
+  "regions": [],
+  "rememberParsingPosition": false
+}
