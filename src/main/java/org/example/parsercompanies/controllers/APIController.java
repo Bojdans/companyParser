@@ -74,7 +74,9 @@ public class APIController {
     @Async
     @PostMapping("/shutdown")
     public void shutdown() {
+        companyParser.stopParsing();
         SpringApplication.exit(context, () -> 0);
+        System.exit(0);
     }
     @PostMapping("/exportCompaniesDB")
     public void ExportDB() throws IOException {

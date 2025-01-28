@@ -2,7 +2,7 @@
   "onlyInOperation": true,
   "partOfGovernmentProcurement": true,
   "pagesDeep": 10,
-  "parsingDelay": 1,
+  "parsingDelay": 0.3,
   "autoExcelOpen": true,
   "onlyMainOKVED": true,
   "proxy": "",
@@ -13,6 +13,8 @@
     "Волгоград",
     "Фокино"
   ],
-  "regions": [],
-  "rememberParsingPosition": false
+  "regions": [
+    "Москва"
+  ],
+  "rememberParsingPosition": true
 }

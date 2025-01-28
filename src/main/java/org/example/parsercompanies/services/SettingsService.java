@@ -21,7 +21,8 @@ public class SettingsService {
     @Getter
     private String chromeDriverPath;
     private String settingsFilePath = "src/main/resources/settingsConfig.json";
-
+    @Getter
+    private boolean configured = false;
     private final ObjectMapper objectMapper = new ObjectMapper();
     @Getter
     private Map<String, Object> settings;
@@ -32,7 +33,7 @@ public class SettingsService {
         loadSettings();
     }
 
-    private void loadSettings() throws IOException {
+    public void loadSettings() throws IOException {
         File settingsFile = new File(settingsFilePath);
         if (!settingsFile.exists()) {
             throw new IOException("Settings file not found: " + settingsFilePath);
@@ -52,6 +53,7 @@ public class SettingsService {
     }
 
     public void reloadWebDriver() throws IOException {
+        configured = false;
         loadSettings();
 
         System.setProperty("webdriver.chrome.driver", chromeDriverPath);
@@ -72,5 +74,6 @@ public class SettingsService {
         } else {
             System.out.println("Proxy is not configured.");
         }
+        configured = true;
     }
 }

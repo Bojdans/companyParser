@@ -640,6 +640,7 @@ function stopParsing() {
     fetch('api/stopParsingCompanies', {
         method: "POST"
     }).then(response => {
+        logArea.textContent="Парсинг выключен"
     })
 }
 
@@ -647,5 +648,6 @@ function shutdown() {
     fetch('api/shutdown', {
         method: "POST"
     }).then(response => {
+        logArea.textContent="Выход..."
     })
 }

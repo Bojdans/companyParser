@@ -45,10 +45,10 @@ public class ExcelExportService {
 
         // Создание заголовков
         Row headerRow = sheet.createRow(0);
-        String[] headers = {"ID", "Organization Name", "Founder", "Founder Position", "INN", "OGRN", "OKATO Code",
-                "Authorized Capital", "Legal Address", "City", "Phones", "Email", "Website", "Revenue", "Profit",
-                "Capital", "Taxes", "Insurance Contributions", "Government Purchases Customer",
-                "Government Purchases Supplier", "Active Company", "Registration Date", "Number of Employees", "OKVED Code"};
+        String[] headers = {"id", "Имя организации", "Руководитель", "Должность", "ИНН", "ОРГН", "ОКАТО",
+                "Уставный капитал", "Юрид. адрес", "Город", "телефоны", "Email", "Сайт", "Выручка за год", "Прибыль за год",
+                "Капитал", "Налоги", "Страховые взносы", "Госзакупки-заказчик",
+                "Госзакупки-поставщик", "Статус компании", "Дата регистрации", "Кол-во работников", "ОКВЭД"};
 
         for (int i = 0; i < headers.length; i++) {
             Cell cell = headerRow.createCell(i);
