@@ -48,7 +48,7 @@ public class CompanyParser {
     private Long currentPage;            // текущая (или последняя спарсенная) страница
     private boolean companiesParsed;     // завершён ли парсинг "компаний" целиком
     private boolean linksOfCompaniesParsed; // собраны ли все ссылки
-
+    private String logStatus;
     // Пути к JSON-файлам
     private static final String INFO_FILE = "src/main/resources/info.json";
     private static final String SETTINGS_FILE = "src/main/resources/settingsConfig.json";
@@ -112,81 +112,135 @@ public class CompanyParser {
 
         // Если логика проекта подразумевает "начинать заново" при уже завершённом парсинге (companiesParsed или linksParsed),
         // то можно сбросить currentPage. Например:
-        if (this.companiesParsed || this.linksOfCompaniesParsed) {
+        if (this.companiesParsed || companyRepository.findAll().isEmpty()) {
             System.out.println("Парсинг ранее завершался, начинаем заново с 1й страницы.");
+            logStatus = "Данные собраны, начинаем заново";
             this.currentPage = 1L;
-            this.companiesParsed = false;
             this.linksOfCompaniesParsed = false;
+            companiesParsed = false;
+            companyRepository.deleteAll();
         }
     }
-
+    public static void killAllChromeAndDrivers() {
+        try {
+            String osName = System.getProperty("os.name").toLowerCase();
+            if (osName.contains("win")) {
+                // Windows: taskkill
+                // /F — принудительно, /IM — по имени процесса, /T — убивает дерево процессов
+                Runtime.getRuntime().exec("taskkill /F /IM chromedriver.exe /T");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
     /**
      * Старт парсинга в отдельном потоке.
      */
     public void startParsing() throws IOException {
+        // 1. Проверяем, не идёт ли уже парсинг
         if (isParsing.get()) {
             System.out.println("Parsing is already running.");
             return;
         }
-        settingsService.loadSettings();
+
+        // 2. Загружаем настройки
+        settingsService.reloadWebDriver();
+        logStatus = "Загрузка настроек";
         System.out.println("Загрузка настроек");
-        for (int i = 0; i <= 100; i++) {
-            if(!settingsService.isConfigured()){
-                continue;
-            }
-            if(!settingsService.isConfigured() && i >= 100){
+
+        // 3. Делаем разумную попытку дождаться, пока сервис настроек будет сконфигурирован
+        //    (если нужно действительно подождать некоторое время, а не просто "пропустить")
+        int tries = 0;
+        while (!settingsService.isConfigured() && tries < 10) {
+            System.out.println("Ждём, пока settingsService будет сконфигурирован...");
+            try {
+                Thread.sleep(1000); // ждём 1 секунду
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 return;
             }
+            tries++;
         }
-        System.out.println("Начинаем парсинг, проверка прошла");
-        // Ставим флаг (парсинг начат), сбрасываем companiesParsed
+        // Если после 10 попыток всё ещё не настроено — уходим
+        if (!settingsService.isConfigured()) {
+            logStatus = "Настройки так и не были загружены — завершаем.";
+            System.out.println("Настройки так и не были загружены — завершаем.");
+            return;
+        }
+        // Дополнительно, если loadParsingInfo() должна выполняться
+        // только 1 раз и не блокирует основной поток — можно оставить здесь
+        loadParsingInfo();
+
         companiesParsed = false;
         isParsing.set(true);
+        logStatus = "Начинаем парсинг, проверка прошла";
+        System.out.println("Начинаем парсинг, проверка прошла");
+        System.out.println(isParsing);
+        System.out.println(isCompaniesParsed());
+        System.out.println(isLinksOfCompaniesParsed());
+        webDriver = new ChromeDriver(
+                settingsService.getOptions()//.addArguments("--headless=new")
+        );
+        webDriver.manage().window().maximize();
 
-        executorService.submit(() -> {
-            try {
-                loadParsingInfo();
+        try {
+            // 5.2 Переходим на страницу
+            webDriver.get("https://checko.ru/search/advanced");
+            checkForServerErrorAndRefreshIfNeeded();
 
-                // Инициализируем драйвер
-                webDriver = new ChromeDriver(settingsService.getOptions());
-                webDriver.manage().window().maximize();
+            // 5.3 Применяем фильтры
 
-                // Переходим на страницу
-                webDriver.get("https://checko.ru/search/advanced");
-                checkForServerErrorAndRefreshIfNeeded();
-
-                // Применяем фильтры
+            if (!isLinksOfCompaniesParsed()) {
                 applyFilters();
-                // Начинаем парсить ссылки
-                System.out.println("Текущая страница: " + currentPage);
+                // 5.4 Парсим ссылки
                 extractAndSaveCompanyLinks();
-
-            } catch (Exception e) {
-                System.err.println("Error during parsing: " + e.getMessage());
-            } finally {
-                // Парсинг закончен
-                companiesParsed = true;
-                stopParsing();
             }
-        });
+
+            // Если ссылки собраны, но данные ещё не распарсены, продолжаем
+            if (linksOfCompaniesParsed && !companiesParsed && isParsing.get()) {
+                parseAllCompanyLinks();
+            }
+        } catch (Exception e) {
+            System.err.println("Error during parsing: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            // 5.5 Всегда закрываем драйвер, если он был инициализирован
+            if (webDriver != null) {
+                try {
+                    webDriver.quit();
+                } catch (Exception ignored) {}
+            }
+            logStatus = "Парсинг закончен";
+            // Ставим флаг, что парсинг завершён
+            companiesParsed = true;
+
+            // Снимаем признак "парсинг идёт"
+            isParsing.set(false);
+        }
     }
 
-    private void applyFilters() throws IOException, InterruptedException {
-        if (!isParsing.get()) return;
 
+    private void applyFilters() throws IOException, InterruptedException {
+        logStatus = "Применяем фильтры";
+        System.out.println("Применяем фильтры");
+        if (!isParsing.get()) return;
+        System.out.println("Применяем чекбокс 1");
         checkAndToggleCheckbox();
         checkForServerErrorAndRefreshIfNeeded();
 
         if (!isParsing.get()) return;
+        System.out.println("Применяем города");
         applyCities();
         checkForServerErrorAndRefreshIfNeeded();
 
         if (!isParsing.get()) return;
+        System.out.println("Применяем категории");
         applyCategories();
         checkForServerErrorAndRefreshIfNeeded();
 
         if (!isParsing.get()) return;
         if (partOfGovernmentProcurement) {
+            System.out.println("Применяем чекбокс 1");
             checkAndTogglePartOfGovernmentProcurement();
             checkForServerErrorAndRefreshIfNeeded();
         }
@@ -325,11 +379,12 @@ public class CompanyParser {
      */
     public void extractAndSaveCompanyLinks() {
         if (!isParsing.get()) return;
+        logStatus = "Переходим к парсингу...";
         System.out.println("Переходим к парсингу...");
         System.out.println("Начинаем с currentPage: " + currentPage);
 
         // --- ВСТАВЛЕННЫЙ БЛОК: если при старте уже currentPage > pagesDeep, сбрасываем на 1
-        if (currentPage != null && currentPage > pagesDeep) {
+        if (((currentPage != null && currentPage > pagesDeep) || companyRepository.findAll().isEmpty()) && !linksOfCompaniesParsed) {
             System.out.println("currentPage (" + currentPage + ") > pagesDeep (" + pagesDeep
                     + ") при старте. Сбрасываем на 1...");
             currentPage = 1L;
@@ -405,10 +460,10 @@ public class CompanyParser {
 
         // Если дошли сюда и currentPage > pagesDeep => значит все ссылки по страницам собраны
         if (currentPage > pagesDeep) {
+            logStatus = "Прошли все страницы";
             System.out.println("Парсер завершил работу: прошли все страницы (currentPage="
                     + currentPage + " > pagesDeep=" + pagesDeep + ")");
             this.linksOfCompaniesParsed = true;
-
             // Ставим currentPage на 1, чтобы в следующий раз начинать заново
             currentPage = 1L;
             // Записываем финальное состояние
@@ -416,7 +471,6 @@ public class CompanyParser {
                 saveProgress(currentPage, false, true);
             }
         } else {
-            // Если вышли по break, всё равно считаем, что ссылки собраны (или прерываемся)
             this.linksOfCompaniesParsed = false;
             if (rememberParsingPosition) {
                 saveProgress(currentPage, false, false);
@@ -449,6 +503,8 @@ public class CompanyParser {
         isParsing.set(false);
         if (webDriver != null) {
             webDriver.quit();
+            logStatus = "Парсер выключен";
+            System.out.println("остановка парсинга");
         }
     }
 
@@ -537,6 +593,64 @@ public class CompanyParser {
         if (attempt >= MAX_REFRESH_ATTEMPTS) {
             System.err.println("Не удалось избавиться от 500 Internal Server Error за "
                     + MAX_REFRESH_ATTEMPTS + " попыток. Продолжаем...");
+        }
+    }
+    private void parseAllCompanyLinks() {
+        if (!isParsing.get()) return;
+        logStatus = "Начинаем парсить сами компании...";
+        System.out.println("Начинаем парсить сами компании...");
+
+        // Выберем все Company, у которых parsed = false
+        List<Company> companiesToParse = companyRepository.findAllByParsed(false);
+        // Если репозиторий не поддерживает такой метод —
+        // нужно создать запрос вручную или обойтись findAll().
+        // Ниже предполагается, что метод findAllByParsedFalse() существует.
+
+        WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(WAIT_TIMEOUT_SECONDS));
+
+        for (Company c : companiesToParse) {
+            if (!isParsing.get()) {
+                // если парсер остановлен, прекращаем
+                break;
+            }
+            try {
+                System.out.println("Открываем ссылку для парсинга: " + c.getUrl());
+                webDriver.get(c.getUrl());
+                checkForServerErrorAndRefreshIfNeeded();
+
+                // Ждём, пока страница прогрузится (условно)
+                wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("body")));
+
+                // Здесь ВАША логика сбора информации (stub):
+                // parseSingleCompanyPage(); // Сбор нужных данных
+                // Пример заглушки:
+                Thread.sleep((long)(parsingDelay * 1000));
+                System.out.println("Собрали информацию по " + c.getUrl());
+
+                c.setParsed(true);
+                companyRepository.save(c);
+
+            } catch (Exception e) {
+                System.err.println("Ошибка при парсинге ссылки " + c.getUrl() + ": " + e.getMessage());
+            }
+        }
+
+        // Проверим, все ли ссылки теперь parsed
+        boolean allDone = companyRepository.findAllByParsed(false).isEmpty();
+        if (allDone) {
+            // Успешно прошли по всем компаниям
+            companiesParsed = true;
+            logStatus = "Парсинг закончен";
+            System.out.println("Все ссылки распарсены, компанииParsed=true");
+        } else {
+            // Прервались до конца
+            companiesParsed = false;
+            System.out.println("Парсер остановился, но не все ссылки обработаны");
+        }
+
+        // Сохраним финальное состояние
+        if (rememberParsingPosition) {
+            saveProgress(1L, companiesParsed, linksOfCompaniesParsed);
         }
     }
 }

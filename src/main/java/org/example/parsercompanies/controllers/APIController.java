@@ -111,4 +111,8 @@ public class APIController {
     public boolean parsingStatus(){
         return companyParser.isCompaniesParsed();
     }
+    @GetMapping("/getLogStatus")
+    public String getLogStatus(){
+        return companyParser.getLogStatus();
+    }
 }

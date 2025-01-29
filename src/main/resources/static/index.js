@@ -345,7 +345,7 @@ let rubrics = [];
 function loadRubricsFromServer() {
     fetch("/api/getCategories", {
         method: "GET",
-        headers: { "Content-Type": "application/json" }
+        headers: {"Content-Type": "application/json"}
     })
         .then((response) => {
             if (!response.ok) {
@@ -424,9 +424,11 @@ function renderRubricTable(rubricsData) {
         tableBody.appendChild(row);
     });
 }
-addEventListener("DOMContentLoaded",()=>{
+
+addEventListener("DOMContentLoaded", () => {
     loadRubricsFromServer()
 })
+
 /**
  * Функция обновления рубрики в массиве rubrics по её ID.
  * Мы ищем нужный объект по rubric.id и выставляем новое значение.
@@ -528,11 +530,8 @@ function cleanCompanies() {
     }).then(response => {
         //функция рендера таблицы городов
         fetchCompanies().then(response => {
-            if (response.ok) {
-                logArea.textContent = "Очищено"
-            } else {
-                logArea.textContent = "Ошибка при отображении компаний"
-            }
+            logArea.textContent = "Очищено"
+            fetchCompanies()
         })
     })
 }
@@ -580,55 +579,57 @@ async function fetchCompanies() {
 
 window.onload = fetchCompanies;
 
-let pollingIntervalId = null; // будет хранить идентификатор setInterval
-
 function startParsing() {
-    logArea.textContent = "Парсинг компаний...";
-
+    startPollingStatus();
     // Запускаем парсинг на сервере
     fetch('api/startParsingCompanies', {
         method: "POST"
     })
         .then(response => {
-            // Когда запрос завершится, начинаем периодический опрос
-            startPollingStatus();
-            // Если нужно, можно вызывать какую-то логику рендера, например fetchCompanies()
-            // fetchCompanies();
         })
         .catch(err => {
             console.error("Ошибка при старте парсинга:", err);
         });
 }
 
-// Функция, которая раз в N секунд опрашивает сервер о статусе
+let pollingIntervalId = null;
+
 function startPollingStatus() {
-    // На всякий случай, если вдруг был запущен предыдущий опрос, останавливаем его
+    console.log("начинаем получать статус")
+    // Останавливаем старый опрос, если он был запущен
     stopPollingStatus();
-
-    // Интервал опроса в миллисекундах, например 2000 мс = 2 секунды
+    // Интервал опроса (в миллисекундах), например 2 секунды
     const intervalMs = 2000;
-    setTimeout(() => {
-        // Периодический опрос
-        pollingIntervalId = setInterval(() => {
-            fetch('api/parsingStatus')
-                .then(response => response.json())
-                .then(data => {
-                    const {isParsed} = data;
-
-                    // Если сервер говорит, что парсинг закончен, прекращаем опрос
-                    if (isParsed) {
-                        logArea.textContent += "\nПарсинг завершён";
-                        stopPollingStatus();
-                    }
-                })
-                .catch(err => {
-                    console.error("Ошибка при получении статуса парсинга:", err);
-                });
-        }, intervalMs);
-    }, 5000)
+    pollingIntervalId = setInterval(() => {
+        fetch('api/getLogStatus')
+            .then(response => response.text())
+            .then(textData => {
+                // Текст, который пришёл с сервера, выводим в logArea
+                // logArea — условное имя textarea или div
+                // Если нужно «дописывать» данные, можно использовать +=
+                // Если нужно перезаписывать — просто =
+                logArea.textContent = textData;
+            })
+            .catch(err => {
+                console.error("Ошибка при получении статуса:", err);
+            });
+        fetch('api/parsingStatus')
+            .then(response => response.json())
+            .then(flag => {
+                // Текст, который пришёл с сервера, выводим в logArea
+                // logArea — условное имя textarea или div
+                // Если нужно «дописывать» данные, можно использовать +=
+                // Если нужно перезаписывать — просто =
+                if (flag) {
+                    fetchCompanies().then(r => console.log(r))
+                }
+            })
+            .catch(err => {
+                console.error("Ошибка при получении статуса:", err);
+            });
+    }, intervalMs);
 }
 
-// Останавливаем периодический опрос
 function stopPollingStatus() {
     if (pollingIntervalId) {
         clearInterval(pollingIntervalId);
@@ -640,7 +641,7 @@ function stopParsing() {
     fetch('api/stopParsingCompanies', {
         method: "POST"
     }).then(response => {
-        logArea.textContent="Парсинг выключен"
+        logArea.textContent = "Парсинг выключен"
     })
 }
 
@@ -648,6 +649,6 @@ function shutdown() {
     fetch('api/shutdown', {
         method: "POST"
     }).then(response => {
-        logArea.textContent="Выход..."
+        logArea.textContent = "Выход..."
     })
 }

@@ -57,7 +57,7 @@ public class SettingsService {
         loadSettings();
 
         System.setProperty("webdriver.chrome.driver", chromeDriverPath);
-
+        options.addArguments("--headless");
         options = new ChromeOptions();
 
         String proxy = (String) settings.get("proxy");

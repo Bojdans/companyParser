@@ -88,6 +88,9 @@ public class Company {
     @Column(name = "okved_code")
     private String okvedCode; // Код ОКВЭД
 
+    @Column(name = "parsed")
+    private boolean parsed = false;
+
     public Company(String organizationName, String founder, String founderPosition, String inn, String ogrn, String okatoCode, BigDecimal authorizedCapital, String legalAddress, String city, String phones, String email, String website, BigDecimal revenue, BigDecimal profit, BigDecimal capital, BigDecimal taxes, BigDecimal insuranceContributions, String governmentPurchasesCustomer, String governmentPurchasesSupplier, Boolean activeCompany, String registrationDate, Integer numberOfEmployees, String okvedCode) {
         this.organizationName = organizationName;
         this.founder = founder;

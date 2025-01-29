@@ -7,10 +7,13 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface CompanyRepository extends JpaRepository<Company, Long> {
     @Modifying
     @Transactional
-    @Query("DELETE FROM Category")
+    @Query("DELETE FROM Company ")
     void deleteAllEntities();
+    List<Company> findAllByParsed(Boolean parsed);
 }
