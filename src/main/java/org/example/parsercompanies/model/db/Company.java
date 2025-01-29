@@ -1,13 +1,8 @@
 package org.example.parsercompanies.model.db;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import jakarta.persistence.*;
 import lombok.NoArgsConstructor;
-import org.springframework.data.jpa.convert.threeten.Jsr310JpaConverters;
-
-import java.math.BigDecimal;
-import java.util.Date;
 
 @Entity
 @Data
@@ -19,6 +14,8 @@ public class Company {
     private Long id; // Первичный ключ
     @Column
     private String url;
+    @Column(name = "organization_type")
+    private String organizationType;
     @Column(name = "organization_name")
     private String organizationName; // Название организации
 
@@ -38,7 +35,7 @@ public class Company {
     private String okatoCode; // Код ОКАТО
 
     @Column(name = "authorized_capital")
-    private BigDecimal authorizedCapital; // Уставный капитал
+    private String authorizedCapital; // Уставный капитал
 
     @Column(name = "legal_address")
     private String legalAddress; // Юридический адрес
@@ -56,19 +53,19 @@ public class Company {
     private String website; // Сайт
 
     @Column(name = "revenue")
-    private BigDecimal revenue; // Выручка
+    private String revenue; // Выручка
 
     @Column(name = "profit")
-    private BigDecimal profit; // Прибыль
+    private String profit; // Прибыль
 
     @Column(name = "capital")
-    private BigDecimal capital; // Капитал
+    private String capital; // Капитал
 
     @Column(name = "taxes")
-    private BigDecimal taxes; // Налоги
+    private String taxes; // Налоги
 
     @Column(name = "insurance_contributions")
-    private BigDecimal insuranceContributions; // Страховые взносы
+    private String insuranceContributions; // Страховые взносы
 
     @Column(name = "government_purchases_customer")
     private String governmentPurchasesCustomer; // Госзакупки (Заказчик)
@@ -91,7 +88,7 @@ public class Company {
     @Column(name = "parsed")
     private boolean parsed = false;
 
-    public Company(String organizationName, String founder, String founderPosition, String inn, String ogrn, String okatoCode, BigDecimal authorizedCapital, String legalAddress, String city, String phones, String email, String website, BigDecimal revenue, BigDecimal profit, BigDecimal capital, BigDecimal taxes, BigDecimal insuranceContributions, String governmentPurchasesCustomer, String governmentPurchasesSupplier, Boolean activeCompany, String registrationDate, Integer numberOfEmployees, String okvedCode) {
+    public Company(String organizationName, String founder, String founderPosition, String inn, String ogrn, String okatoCode, String authorizedCapital, String legalAddress, String city, String phones, String email, String website, String revenue, String profit, String capital, String taxes, String insuranceContributions, String governmentPurchasesCustomer, String governmentPurchasesSupplier, Boolean activeCompany, String registrationDate, Integer numberOfEmployees, String okvedCode) {
         this.organizationName = organizationName;
         this.founder = founder;
         this.founderPosition = founderPosition;
@@ -116,7 +113,7 @@ public class Company {
         this.numberOfEmployees = numberOfEmployees;
         this.okvedCode = okvedCode;
     }
-    public Company(Long id,String organizationName, String founder, String founderPosition, String inn, String ogrn, String okatoCode, BigDecimal authorizedCapital, String legalAddress, String city, String phones, String email, String website, BigDecimal revenue, BigDecimal profit, BigDecimal capital, BigDecimal taxes, BigDecimal insuranceContributions, String governmentPurchasesCustomer, String governmentPurchasesSupplier, Boolean activeCompany, String registrationDate, Integer numberOfEmployees, String okvedCode) {
+    public Company(Long id,String organizationName, String founder, String founderPosition, String inn, String ogrn, String okatoCode, String authorizedCapital, String legalAddress, String city, String phones, String email, String website, String revenue, String profit, String capital, String taxes, String insuranceContributions, String governmentPurchasesCustomer, String governmentPurchasesSupplier, Boolean activeCompany, String registrationDate, Integer numberOfEmployees, String okvedCode) {
         this.organizationName = organizationName;
         this.founder = founder;
         this.founderPosition = founderPosition;

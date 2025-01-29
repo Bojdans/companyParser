@@ -161,8 +161,7 @@ th, td {
 th {
     background-color: #919191;
     color: white;
-    font-size: 12px;
-    position: relative; /* Для размещения ресайзера */
+    font-size: 12px; /* Для размещения ресайзера */
 }
 
 td {
@@ -280,7 +279,6 @@ tr:hover {
 
 /* Таблица рубрик */
 .table-container {
-    overflow-y: scroll;
     flex: 1;
 }
 
