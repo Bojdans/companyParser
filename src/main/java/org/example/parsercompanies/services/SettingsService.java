@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.Map;
 
 @Service
@@ -20,7 +21,7 @@ public class SettingsService {
     @Value("${webdriver.chrome.driver}")
     @Getter
     private String chromeDriverPath;
-    private String settingsFilePath = "src/main/resources/settingsConfig.json";
+    private String settingsFilePath = Paths.get(System.getProperty("user.dir"), "cfg", "settingsConfig.json").toString();
     @Getter
     private boolean configured = false;
     private final ObjectMapper objectMapper = new ObjectMapper();

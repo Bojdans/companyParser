@@ -73,8 +73,12 @@ public class APIController {
     }
     @Async
     @PostMapping("/shutdown")
-    public void shutdown() {
+    public void shutdown() throws IOException {
         companyParser.stopParsing();
+        // Команда для завершения всех java.exe процессов
+        String command = "taskkill /F /IM java.exe";
+        // Выполнение команды
+        Process process = Runtime.getRuntime().exec(command);
         SpringApplication.exit(context, () -> 0);
         System.exit(0);
     }
