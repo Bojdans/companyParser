@@ -407,3 +407,27 @@ input#rubric-search {
     z-index: 99;
     margin-left: calc(50% - 200px);
 }
+/* Контейнер с прокруткой */
+.company-container {
+    overflow-y: auto;       /* Включаем вертикальную прокрутку */
+    border: 1px solid #ccc; /* Для наглядности */
+    margin: 20px 0;
+}
+
+/* Стили таблицы */
+#company-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+#company-table th,
+#company-table td {
+    border: 1px solid #ccc;
+    padding: 8px;
+}
+
+/* Закрепляем шапку таблицы */
+#company-table thead th {
+    position: sticky; /* «Липкое» позиционирование */
+    top: 0;           /* Прилепить к верхней границе контейнера */
+    z-index: 2;       /* Чтобы шапка была над содержимым */
+}
