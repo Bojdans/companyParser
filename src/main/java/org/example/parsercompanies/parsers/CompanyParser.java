@@ -21,6 +21,7 @@ import org.springframework.stereotype.Component;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.*;
@@ -51,8 +52,8 @@ public class CompanyParser {
     private boolean linksOfCompaniesParsed; // собраны ли все ссылки
     private String logStatus;
     // Пути к JSON-файлам
-    private static final String INFO_FILE = "src/main/resources/info.json";
-    private static final String SETTINGS_FILE = "src/main/resources/settingsConfig.json";
+    private static final String INFO_FILE = Paths.get(System.getProperty("user.dir"), "cfg", "info.json").toString();
+    private static final String SETTINGS_FILE = Paths.get(System.getProperty("user.dir"), "cfg", "settingsConfig.json").toString();
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -182,7 +183,7 @@ public class CompanyParser {
         System.out.println(isCompaniesParsed());
         System.out.println(isLinksOfCompaniesParsed());
         webDriver = new ChromeDriver(
-                settingsService.getOptions()//.addArguments("--headless=new")
+                settingsService.getOptions().addArguments("--headless=new")
         );
         webDriver.manage().window().maximize();
 

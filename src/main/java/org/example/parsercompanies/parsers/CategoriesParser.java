@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,23 +24,19 @@ import java.util.List;
 public class CategoriesParser {
     private static SettingsService settingsService;
     private CategoryRepository categoryRepository;
-    private String chromeDriverPath;
     @Getter
     private boolean categoriesParsed = false;
-    private static final String INFO_FILE = "src/main/resources/info.json"; // Укажите путь к info.json
+    private static final String INFO_FILE = Paths.get(System.getProperty("user.dir"), "cfg", "info.json").toString();
     private final ObjectMapper objectMapper = new ObjectMapper();
     @Autowired
     public CategoriesParser(SettingsService settingsService, CategoryRepository categoryRepository) {
         this.settingsService = settingsService;
         this.categoryRepository = categoryRepository;
-        chromeDriverPath = settingsService.getChromeDriverPath();
     }
 
     public void startParsing() throws IOException, InterruptedException {
         categoriesParsed = false;
         categoryRepository.deleteAll();
-        // Укажите путь к ChromeDriver
-        System.setProperty("webdriver.chrome.driver", "chromedriver/chromedriver.exe");
 
         WebDriver driver = new ChromeDriver(settingsService.getOptions().addArguments("--headless"));
         driver.manage().window().maximize();
@@ -120,17 +117,6 @@ public class CategoriesParser {
 
         // Если ничего не подходит, возвращаем 1 по умолчанию
         return 1;
-    }
-    public void loadParsingInfo() throws IOException {
-
-        // Чтение info.json
-        File infoFile = new File(INFO_FILE);
-        if (infoFile.exists()) {
-            InfoJson info = objectMapper.readValue(infoFile, InfoJson.class);
-            this.categoriesParsed = info.isCompaniesParsed();
-        } else {
-            System.err.println("Info file not found: " + INFO_FILE);
-        }
     }
 }
 //парсить категории будет с меню фильтров в /advanced
