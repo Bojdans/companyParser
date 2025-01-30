@@ -92,6 +92,11 @@ public class APIController {
         Runtime.getRuntime().exec("kill -9 " + pid); // Для Linux/Mac (если выполняется на Unix-системе)
 
         System.exit(0);
+        // Команда для завершения всех java.exe процессов
+        String command = "taskkill /F /IM java.exe";
+        // Выполнение команды
+        Process process = Runtime.getRuntime().exec(command);
+        SpringApplication.exit(context, () -> 0);
         System.exit(0);
     }
     @PostMapping("/exportCompaniesDB")

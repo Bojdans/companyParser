@@ -124,19 +124,6 @@ public class CompanyParser {
         }
     }
 
-    public static void killAllChromeAndDrivers() {
-        try {
-            String osName = System.getProperty("os.name").toLowerCase();
-            if (osName.contains("win")) {
-                // Windows: taskkill
-                // /F — принудительно, /IM — по имени процесса, /T — убивает дерево процессов
-                Runtime.getRuntime().exec("taskkill /F /IM chromedriver.exe /T");
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     /**
      * Старт парсинга в отдельном потоке.
      */
