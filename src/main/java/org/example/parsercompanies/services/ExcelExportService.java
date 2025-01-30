@@ -33,7 +33,7 @@ public class ExcelExportService {
     }
 
     public void exportToExcel() throws IOException {
-        List<Company> companies = companyRepository.findAll();
+        List<Company> companies = companyRepository.findAllByParsed(true);
 
         if (companies.isEmpty()) {
             System.out.println("No data to export.");
@@ -45,7 +45,7 @@ public class ExcelExportService {
 
         // Создание заголовков
         Row headerRow = sheet.createRow(0);
-        String[] headers = {"id", "Имя организации", "Руководитель", "Должность", "ИНН", "ОРГН", "ОКАТО",
+        String[] headers = {"id", "Имя организации", "Руководитель", "Должность", "ИНН", "ОГРН", "ОКАТО",
                 "Уставный капитал", "Юрид. адрес", "Город", "телефоны", "Email", "Сайт", "Выручка за год", "Прибыль за год",
                 "Капитал", "Налоги", "Страховые взносы", "Госзакупки-заказчик",
                 "Госзакупки-поставщик", "Компания действующая", "Дата регистрации", "Кол-во работников", "ОКВЭД"};

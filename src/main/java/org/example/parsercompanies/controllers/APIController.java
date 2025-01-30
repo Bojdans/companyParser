@@ -11,12 +11,17 @@ import org.example.parsercompanies.repos.CompanyRepository;
 import org.example.parsercompanies.services.ExcelExportService;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationContext;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.util.List;
 
 @RestController
@@ -73,9 +78,20 @@ public class APIController {
     }
     @Async
     @PostMapping("/shutdown")
-    public void shutdown() {
+    public void shutdown() throws IOException {
         companyParser.stopParsing();
-        SpringApplication.exit(context, () -> 0);
+        // 1. Закрываем все активные потоки
+        System.out.println("Closing application...");
+
+        // 3. Получаем PID процесса
+        String pid = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
+
+        // 4. Отправляем команде JVM завершение процесса (самый жесткий способ)
+        System.out.println("Terminating process with PID: " + pid);
+        Runtime.getRuntime().exec("taskkill /F /PID " + pid); // Для Windows
+        Runtime.getRuntime().exec("kill -9 " + pid); // Для Linux/Mac (если выполняется на Unix-системе)
+
+        System.exit(0);
         System.exit(0);
     }
     @PostMapping("/exportCompaniesDB")
@@ -104,8 +120,11 @@ public class APIController {
         return categoryRepository.findAllByActive(true);
     }
     @GetMapping("/getAllCompanies")
-    public List<Company> getAllCompanies() {
-        return companyRepository.findAll();
+    public Page<Company> getAllCompanies(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int pageSize) {
+        Pageable pageable = PageRequest.of(page, pageSize, Sort.by("id").ascending());
+        return companyRepository.findAllByParsed(true, pageable);
     }
     @GetMapping("/parsingStatus")
     public boolean parsingStatus(){
