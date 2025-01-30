@@ -268,7 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
     })
         .then(data => {
             regions = data
-
+            startPollingStatus();
             generateRegions();
         }).then(data => {
         loadSettingsFromServer();
@@ -531,21 +531,41 @@ function cleanCompanies() {
         //функция рендера таблицы городов
         fetchCompanies().then(response => {
             logArea.textContent = "Очищено"
+            const tableBody = document.querySelector('#company-table tbody').innerHTML = "";
             fetchCompanies()
         })
     })
 }
 
+let page = 0; // Начинаем с первой страницы
+const pageSize = 50; // Количество записей на страницу
+let isLoading = false; // Флаг загрузки
+let hasMoreData = true; // Флаг, показывающий, есть ли еще данные
+
 async function fetchCompanies() {
-    const response = await fetch('http://localhost:8081/api/getAllCompanies');
-    const companies = await response.json();
-    const tableBody = document.querySelector('#company-table tbody');
-    companies.forEach(company => {
-        const row = document.createElement('tr');
-        const phoneOptions = company.phones
-            ? company.phones.split(',').map(phone => `<option>${phone.trim()}</option>`).join('')
-            : '';
-        row.innerHTML = `
+    if (isLoading || !hasMoreData) return;
+    isLoading = true;
+
+    try {
+        const response = await fetch(`http://localhost:8081/api/getAllCompanies?page=${page}&pageSize=${pageSize}`);
+        const data = await response.json();
+
+        if (data.content.length === 0) {
+            hasMoreData = false; // Данных больше нет, прекращаем загрузку
+            observer.disconnect(); // Отключаем observer
+            return;
+        }
+
+        const tableBody = document.querySelector('#company-table tbody');
+        const fragment = document.createDocumentFragment();
+
+        data.content.forEach(company => {
+            const row = document.createElement('tr');
+            const phoneOptions = company.phones
+                ? company.phones.split(',').map(phone => `<option>${phone.trim()}</option>`).join('')
+                : '';
+
+            row.innerHTML = `
                 <td>${company.organizationType || ''}</td>
                 <td>${company.organizationName || ''}</td>
                 <td>${company.founder || ''}</td>
@@ -556,9 +576,7 @@ async function fetchCompanies() {
                 <td>${company.authorizedCapital || ''}</td>
                 <td>${company.legalAddress || ''}</td>
                 <td>${company.city || ''}</td>
-                <td>
-                    <select class="dropdown">${phoneOptions}</select>
-                </td>
+                <td><select class="dropdown">${phoneOptions}</select></td>
                 <td>${company.email || ''}</td>
                 <td>${company.website || ''}</td>
                 <td>${company.revenue || ''}</td>
@@ -570,12 +588,30 @@ async function fetchCompanies() {
                 <td>${company.governmentPurchasesSupplier || ''}</td>
                 <td>${company.activeCompany ? 'Да' : 'Нет'}</td>
                 <td>${company.registrationDate || ''}</td>
-                <td>${company.numberOfEmployees || ''}</td>
+                <td>${company.numberOfEmployees}</td>
                 <td>${company.okvedCode || ''}</td>
             `;
-        tableBody.appendChild(row);
-    });
+
+            fragment.appendChild(row);
+        });
+
+        tableBody.appendChild(fragment);
+        page++; // Переходим к следующей странице
+    } catch (error) {
+        console.error("Ошибка загрузки данных:", error);
+    } finally {
+        isLoading = false;
+    }
 }
+
+// **Добавляем автоматическую загрузку при прокрутке вниз**
+const observer = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting) {
+        fetchCompanies();
+    }
+}, { rootMargin: "100px" });
+
+observer.observe(document.querySelector("#load-more"));
 
 window.onload = fetchCompanies;
 
@@ -613,20 +649,6 @@ function startPollingStatus() {
             .catch(err => {
                 console.error("Ошибка при получении статуса:", err);
             });
-        fetch('api/parsingStatus')
-            .then(response => response.json())
-            .then(flag => {
-                // Текст, который пришёл с сервера, выводим в logArea
-                // logArea — условное имя textarea или div
-                // Если нужно «дописывать» данные, можно использовать +=
-                // Если нужно перезаписывать — просто =
-                if (flag) {
-                    fetchCompanies().then(r => console.log(r))
-                }
-            })
-            .catch(err => {
-                console.error("Ошибка при получении статуса:", err);
-            });
     }, intervalMs);
 }
 
@@ -641,7 +663,6 @@ function stopParsing() {
     fetch('api/stopParsingCompanies', {
         method: "POST"
     }).then(response => {
-        logArea.textContent = "Парсинг выключен"
     })
 }
 
@@ -650,5 +671,8 @@ function shutdown() {
         method: "POST"
     }).then(response => {
         logArea.textContent = "Выход..."
+        window.opener = null;
+        window.open("", "_self");
+        window.close();
     })
 }

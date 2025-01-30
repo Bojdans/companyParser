@@ -35,7 +35,7 @@ public class Company {
     private String okatoCode; // Код ОКАТО
 
     @Column(name = "authorized_capital")
-    private String authorizedCapital; // Уставный капитал
+    private String authorizedCapital = "0"; // Уставный капитал
 
     @Column(name = "legal_address")
     private String legalAddress; // Юридический адрес
@@ -53,25 +53,25 @@ public class Company {
     private String website; // Сайт
 
     @Column(name = "revenue")
-    private String revenue; // Выручка
+    private String revenue = "0 руб"; // Выручка
 
     @Column(name = "profit")
-    private String profit; // Прибыль
+    private String profit = "0 руб"; // Прибыль
 
     @Column(name = "capital")
-    private String capital; // Капитал
+    private String capital = "0 руб"; // Капитал
 
     @Column(name = "taxes")
-    private String taxes; // Налоги
+    private String taxes = "0 руб"; // Налоги
 
     @Column(name = "insurance_contributions")
-    private String insuranceContributions; // Страховые взносы
+    private String insuranceContributions = "0 руб"; // Страховые взносы
 
     @Column(name = "government_purchases_customer")
-    private String governmentPurchasesCustomer; // Госзакупки (Заказчик)
+    private String governmentPurchasesCustomer = "0 руб"; // Госзакупки (Заказчик)
 
     @Column(name = "government_purchases_supplier")
-    private String governmentPurchasesSupplier; // Госзакупки (Поставщик)
+    private String governmentPurchasesSupplier = "0 руб"; // Госзакупки (Поставщик)
 
     @Column(name = "active_company")
     private Boolean activeCompany; // Действующая компания
@@ -80,7 +80,7 @@ public class Company {
     private String registrationDate; // Дата регистрации
 
     @Column(name = "number_of_employees")
-    private Integer numberOfEmployees; // Количество работников
+    private Integer numberOfEmployees = 0; // Количество работников
 
     @Column(name = "okved_code")
     private String okvedCode; // Код ОКВЭД

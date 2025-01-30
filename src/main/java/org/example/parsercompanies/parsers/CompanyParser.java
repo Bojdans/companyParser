@@ -50,7 +50,7 @@ public class CompanyParser {
     private Long currentPage;            // текущая (или последняя спарсенная) страница
     private boolean companiesParsed;     // завершён ли парсинг "компаний" целиком
     private boolean linksOfCompaniesParsed; // собраны ли все ссылки
-    private String logStatus;
+    private String logStatus = "ничего не делаем";
     // Пути к JSON-файлам
     private static final String INFO_FILE = Paths.get(System.getProperty("user.dir"), "cfg", "info.json").toString();
     private static final String SETTINGS_FILE = Paths.get(System.getProperty("user.dir"), "cfg", "settingsConfig.json").toString();
@@ -127,7 +127,7 @@ public class CompanyParser {
     /**
      * Старт парсинга в отдельном потоке.
      */
-    public void startParsing() throws IOException {
+    public void startParsing() throws IOException, InterruptedException {
         // 1. Проверяем, не идёт ли уже парсинг
         if (isParsing.get()) {
             System.out.println("Parsing is already running.");
@@ -202,7 +202,6 @@ public class CompanyParser {
                 } catch (Exception ignored) {
                 }
             }
-            logStatus = "Парсинг закончен";
             // Ставим флаг, что парсинг завершён
             companiesParsed = true;
 
@@ -433,7 +432,7 @@ public class CompanyParser {
 
                     checkForServerErrorAndRefreshIfNeeded();
                 }
-
+                logStatus = "спарсена страница: " + currentPage;
                 System.out.println("Page " + currentPage + " processed. Total links extracted: " + companyLinks.size());
                 currentPage++;
 
@@ -496,6 +495,7 @@ public class CompanyParser {
         if (webDriver != null) {
             webDriver.quit();
             logStatus = "Парсер выключен";
+            logStatus = "Ничего не делаем";
             System.out.println("остановка парсинга");
         }
     }
@@ -577,7 +577,7 @@ public class CompanyParser {
 
             // Если элемент найден — делаем refresh
             System.err.println("Страница вернула 500 Internal Server Error. Перезагружаем. Попытка " + (attempt + 1));
-            Thread.sleep(2000);
+            Thread.sleep(500);
             webDriver.navigate().refresh();
             attempt++;
         }
@@ -621,6 +621,7 @@ public class CompanyParser {
                 System.out.println("Собрали информацию по " + c.getUrl());
                 System.out.println(parseCompanyInfo(c));
                 companyRepository.save(parseCompanyInfo(c));
+                logStatus = "спарсена компания: " + c.getId();
 
             } catch (Exception e) {
                 System.err.println("Ошибка при парсинге ссылки " + c.getUrl() + ": " + e.getMessage());
@@ -637,6 +638,8 @@ public class CompanyParser {
         } else {
             // Прервались до конца
             companiesParsed = false;
+            parseAllCompanyLinks();
+            logStatus = "оишбка,не все ссылки обработаны, продолжаем....";
             System.out.println("Парсер остановился, но не все ссылки обработаны");
         }
 
@@ -650,157 +653,146 @@ public class CompanyParser {
     //парсинг одной компании
 
     public Company parseCompanyInfo(Company company) {
-        // Название организации (пример: <h1 id="cn">ООО КОМБИНАТ "ДУБКИ"</h1>) +
-        company.setOrganizationName(getTextIfPresent(By.cssSelector("h1#cn")));
-        company.setOrganizationType(getTextIfPresent(By.cssSelector("h1#cn")).substring(0, getTextIfPresent(By.cssSelector("h1#cn")).indexOf("\"")));
-
-
-        //учредитель и должность +
         try {
-            WebElement infoBlock = webDriver.findElement(
-                    By.cssSelector("div.d-flex div.flex-grow-1.ms-3")
-            );
-            // «Должность» (например: «Генеральный директор», «Владелец», «Учредитель»)
-            WebElement positionElement = infoBlock.findElement(By.cssSelector("div.fw-700"));
-            String position = positionElement.getText().trim();
-            company.setFounderPosition(position);
-
-            // ФИО
-            WebElement nameElement = infoBlock.findElement(By.cssSelector("a.link"));
-            String name = nameElement.getText().trim();
-            company.setFounder(name);
-
-        } catch (NoSuchElementException e) {
-            // Если блока нет, ставим null
-            company.setFounderPosition(null);
-            company.setFounder(null);
+            // Название организации и тип
+            String orgName = getTextIfPresent(By.cssSelector("h1#cn"));
+            if (orgName != null) {
+                company.setOrganizationName(orgName);
+                int quoteIndex = orgName.indexOf("\"");
+                if (quoteIndex > 0) {
+                    company.setOrganizationType(orgName.substring(0, quoteIndex));
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Ошибка при парсинге названия компании: " + e.getMessage());
         }
 
-        // ИНН +
-        company.setInn(getTextIfPresent(By.cssSelector("strong#copy-inn")));
-        // ОГРН +
-        company.setOgrn(getTextIfPresent(By.cssSelector("strong#copy-ogrn")));
-        // ОКАТО +
-        company.setOkatoCode(getTextIfPresent(By.cssSelector("span#copy-okato")));
-
-        // Уставный капитал (ищем текст после "Уставный капитал") +
-        company.setAuthorizedCapital(findTextByLabel("Уставный капитал"));
-
-        // Юридический адрес + город +
-        String address = getTextIfPresent(By.cssSelector("span#copy-address"));
-        company.setLegalAddress(address);
-        company.setCity(parseCityFromAddress(address));
-        //выручка прибыль капитал
+        // Учредитель и должность
         try {
-            // Ищем блок <div id="accounting-huge">
-            WebElement accountingBlock = webDriver.findElement(By.cssSelector("div#accounting-huge"));
+            WebElement infoBlock = webDriver.findElement(By.cssSelector("div.d-flex div.flex-grow-1.ms-3"));
+            company.setFounderPosition(infoBlock.findElement(By.cssSelector("div.fw-700")).getText().trim());
+            company.setFounder(infoBlock.findElement(By.cssSelector("a.link")).getText().trim());
+        } catch (NoSuchElementException e) {
+            System.err.println("Учредитель или должность не найдены: " + e.getMessage());
+        }
 
-            // Находим все вложенные колонки: div.col-12.col-md-4
+        // ИНН, ОГРН, ОКАТО
+        try {
+            company.setInn(getTextIfPresent(By.cssSelector("strong#copy-inn")));
+            company.setOgrn(getTextIfPresent(By.cssSelector("strong#copy-ogrn")));
+            company.setOkatoCode(getTextIfPresent(By.cssSelector("span#copy-okato")));
+        } catch (Exception e) {
+            System.err.println("Ошибка при парсинге ИНН/ОГРН/ОКАТО: " + e.getMessage());
+        }
+
+        // Уставный капитал
+        try {
+            String capital = findTextByLabel("Уставный капитал");
+            company.setAuthorizedCapital(capital == null ? "0" : capital );
+        } catch (Exception e) {
+            System.err.println("Ошибка при парсинге уставного капитала: " + e.getMessage());
+        }
+
+        // Юридический адрес и город
+        try {
+            String address = getTextIfPresent(By.cssSelector("span#copy-address"));
+            if (address != null) {
+                company.setLegalAddress(address);
+                company.setCity(parseCityFromAddress(address));
+            }
+        } catch (Exception e) {
+            System.err.println("Ошибка при парсинге юридического адреса: " + e.getMessage());
+        }
+
+        // Выручка, прибыль, капитал
+        try {
+            WebElement accountingBlock = webDriver.findElement(By.cssSelector("div#accounting-huge"));
             List<WebElement> columns = accountingBlock.findElements(By.cssSelector("div.col-12.col-md-4"));
 
-            // 1) Выручка (из первой колонки)
-            //    Ищем div.text-huge и достаём текст, например: "23 млн руб. -15%"
-            WebElement revenueBlock = columns.get(0).findElement(By.cssSelector("div.text-huge"));
-            String revenueText = revenueBlock.getText().trim();
-            // Удалим возможный процент роста/спада и парсим число
-            company.setRevenue(cleanUpPercent(revenueText));
-
-            // 2) Прибыль (вторая колонка)
-            WebElement profitBlock = columns.get(1).findElement(By.cssSelector("div.text-huge"));
-            String profitText = profitBlock.getText().trim();
-            company.setProfit(cleanUpPercent(profitText));
-
-            // 3) Капитал (третья колонка)
-            WebElement capitalBlock = columns.get(2).findElement(By.cssSelector("div.text-huge"));
-            String capitalText = capitalBlock.getText().trim();
-            company.setCapital(cleanUpPercent(capitalText));
-
+            if (columns.size() >= 3) {
+                company.setRevenue(cleanUpPercent(columns.get(0).findElement(By.cssSelector("div.text-huge")).getText().trim()));
+                company.setProfit(cleanUpPercent(columns.get(1).findElement(By.cssSelector("div.text-huge")).getText().trim()));
+                company.setCapital(cleanUpPercent(columns.get(2).findElement(By.cssSelector("div.text-huge")).getText().trim()));
+            }
         } catch (NoSuchElementException e) {
-            // Если блок или нужные элементы не найдены, не ломаем код
+            System.err.println("Ошибка при парсинге финансовых данных: " + e.getMessage());
         }
-        //госзакупки заказчик -
-        //госзакупки поставщик -
-        try {
-            // 1) Ищем сам блок <section id="contracts">, чтобы ограничить поиск
-            WebElement contractsSection = webDriver.findElement(By.cssSelector("section#contracts"));
 
-            // 2) Внутри него ищем строку: div.row.gy-3.gx-4.mb-4
+        // Госзакупки (заказчик и поставщик)
+        try {
+            WebElement contractsSection = webDriver.findElement(By.cssSelector("section#contracts"));
             WebElement row = contractsSection.findElement(By.cssSelector("div.row.gy-3.gx-4.mb-4"));
 
-            // --- ЗАказчик ---
-            // <div class="col-12 col-md-6 col-xxl-4"> ... </div>
-            WebElement customerColumn = row.findElement(By.cssSelector("div.col-12.col-md-6.col-xxl-4"));
-            // Внутри ищем .text-huge -> например: "0 руб." или "123,4 тыс. руб."
-            WebElement customerBlock = customerColumn.findElement(By.cssSelector("div.text-huge"));
-            String customerText = customerBlock.getText().trim();
-            company.setGovernmentPurchasesCustomer(customerText);
+            WebElement customerBlock = row.findElement(By.cssSelector("div.col-12.col-md-6.col-xxl-4 div.text-huge"));
+            WebElement supplierBlock = row.findElement(By.cssSelector("div.col-12.col-md-6.col-xxl-8 div.text-huge"));
 
-            // --- Поставщик ---
-            // <div class="col-12 col-md-6 col-xxl-8"> ... </div>
-            WebElement supplierColumn = row.findElement(By.cssSelector("div.col-12.col-md-6.col-xxl-8"));
-            WebElement supplierBlock = supplierColumn.findElement(By.cssSelector("div.text-huge"));
-            String supplierText = supplierBlock.getText().trim();
-            company.setGovernmentPurchasesSupplier(supplierText);
-
+            company.setGovernmentPurchasesCustomer(customerBlock.getText().trim());
+            company.setGovernmentPurchasesSupplier(supplierBlock.getText().trim());
         } catch (NoSuchElementException e) {
-            // Если элементы не найдены — пусть поля останутся null или 0
+            System.err.println("Ошибка при парсинге госзакупок: " + e.getMessage());
         }
-        // Страховые взносы и налоги +
-        try {
-            // Основной блок, где есть строки «Налоги» и «Страховые взносы»:
-            WebElement taxesSection = webDriver.findElement(By.cssSelector("section#taxes"));
 
-            // Теперь ищем div.row.gy-3.gx-4 только внутри найденного section#taxes
+        // Налоги и страховые взносы
+        try {
+            WebElement taxesSection = webDriver.findElement(By.cssSelector("section#taxes"));
             WebElement row = taxesSection.findElement(By.cssSelector("div.row.gy-3.gx-4"));
 
-            // 1) Налоги
-            // div.col-12.col-md-6.col-xxl-4 => внутри него:
-            // <div class="mb-2 fw-700">Налоги</div>
-            // <div class="text-huge mb-1">...<a>237,3 <span>млн руб.</span></a>...</div>
-            WebElement taxesColumn = row.findElement(
-                    By.cssSelector("div.col-12.col-md-6.col-xxl-4")
-            );
-            // Берём текст из блока "div.text-huge.mb-1"
-            WebElement taxesBlock = taxesColumn.findElement(
-                    By.cssSelector("div.text-huge.mb-1")
-            );
-            String taxesText = taxesBlock.getText().trim();
-            company.setTaxes(cleanUpPercent(taxesText));
+            WebElement taxesBlock = row.findElement(By.cssSelector("div.col-12.col-md-6.col-xxl-4 div.text-huge.mb-1"));
+            WebElement insuranceBlock = row.findElement(By.cssSelector("div.col-12.col-md-6.col-xxl-8 div.text-huge.mb-1"));
 
-            // 2) Страховые взносы
-            // div.col-12.col-md-6.col-xxl-8 => аналогично
-            WebElement insuranceColumn = row.findElement(
-                    By.cssSelector("div.col-12.col-md-6.col-xxl-8")
-            );
-            WebElement insuranceBlock = insuranceColumn.findElement(
-                    By.cssSelector("div.text-huge.mb-1")
-            );
-            String insuranceText = insuranceBlock.getText().trim();
-            company.setInsuranceContributions(cleanUpPercent(insuranceText));
-
-        }
-        catch (NoSuchElementException e) {
+            company.setTaxes(cleanUpPercent(taxesBlock.getText().trim()));
+            company.setInsuranceContributions(cleanUpPercent(insuranceBlock.getText().trim()));
+        } catch (NoSuchElementException e) {
+            System.err.println("Ошибка при парсинге налогов или страховых взносов: " + e.getMessage());
         }
 
+        // Флаг активности
         company.setActiveCompany(true);
 
-        // Дата регистрации +
-        company.setRegistrationDate(findTextByLabel("Дата регистрации"));
+        // Дата регистрации
+        try {
+            company.setRegistrationDate(findTextByLabel("Дата регистрации"));
+        } catch (Exception e) {
+            System.err.println("Ошибка при парсинге даты регистрации: " + e.getMessage());
+        }
 
-        // Количество работников +
-        company.setNumberOfEmployees(
-                parseNumberOfEmployees()
-        );
+        // Количество работников
+        try {
+            company.setNumberOfEmployees(parseNumberOfEmployees());
+        } catch (Exception e) {
+            System.err.println("Ошибка при парсинге количества работников: " + e.getMessage());
+        }
 
-        // ОКВЭД +
-        company.setOkvedCode(parseOkvedFromActivity());
+        // ОКВЭД
+        try {
+            company.setOkvedCode(parseOkvedFromActivity());
+        } catch (Exception e) {
+            System.err.println("Ошибка при парсинге ОКВЭД: " + e.getMessage());
+        }
 
-        //парсим телефон и почту +
-        company.setPhones(parsePhones());
-        company.setEmail(parseEmailIfPresent());
-        company.setWebsite(parseWebsiteIfPresent());
+        // Телефоны, email, сайт
+        try {
+            company.setPhones(parsePhones());
+        } catch (Exception e) {
+            System.err.println("Ошибка при парсинге телефонов: " + e.getMessage());
+        }
+
+        try {
+            company.setEmail(parseEmailIfPresent());
+        } catch (Exception e) {
+            System.err.println("Ошибка при парсинге email: " + e.getMessage());
+        }
+
+        try {
+            company.setWebsite(parseWebsiteIfPresent());
+        } catch (Exception e) {
+            System.err.println("Ошибка при парсинге сайта: " + e.getMessage());
+        }
+
+        company.setParsed(true);
         return company;
     }
+
     private String cleanUpPercent(String text) {
         return text.replaceAll("(\\+|-)\\d+%?$", "").trim();
     }
@@ -841,18 +833,17 @@ public class CompanyParser {
 
     private Integer parseNumberOfEmployees() {
         String digits = webDriver.findElement(By.xpath("/html/body/main/div[2]/div/article/div/div[4]/div[2]/div[3]/div[2]")).getText().replaceAll("\\D+", "");
-        if (digits.isEmpty()) return null;
+        if (digits.isEmpty()) return 0;
         return Integer.valueOf(digits);
     }
 
     private String parseOkvedFromActivity() {
-        String activity = findTextByLabel("Вид деятельности");
-        if (activity == null) return null;
-        java.util.regex.Matcher m = java.util.regex.Pattern.compile("\\(([^)]+)\\)").matcher(activity);
-        if (m.find()) {
-            return m.group(1).trim();
+        try {
+            WebElement activityBlock = webDriver.findElement(By.id("activity"));
+            return  activityBlock.findElement(By.tagName("tbody")).findElement(By.tagName("tr")).findElement(By.tagName("td")).getText();
+        }catch (NoSuchElementException e) {
+            return null;
         }
-        return null;
     }
 
 
@@ -886,24 +877,36 @@ public class CompanyParser {
      */
     private String parseEmailIfPresent() {
         try {
-            // Ищем элемент <strong> с текстом "Электронная почта",
-            // затем берём его первый соседний элемент <a> (following-sibling::a[1]).
-            WebElement emailLink = webDriver.findElement(By.xpath(
-                    "//strong[contains(text(),'Электронная почта')]/following-sibling::a[1]"
-            ));
-            return emailLink.getText().trim();
+            // Ищем элемент <strong> с текстом "Электронная почта"
+            WebElement emailHeader = webDriver.findElement(By.xpath("//strong[contains(text(),'Электронная почта')]"));
+
+            // Ищем все ссылки <a>, которые находятся сразу после заголовка
+            List<WebElement> emailLinks = emailHeader.findElements(By.xpath("following-sibling::a"));
+
+            // Извлекаем текст из найденных ссылок и объединяем через запятую
+            return emailLinks.stream()
+                    .map(WebElement::getText)
+                    .map(String::trim)
+                    .filter(email -> !email.isEmpty() && email.contains("@")) // Фильтруем пустые строки
+                    .collect(Collectors.joining(", "));
         } catch (NoSuchElementException e) {
             return null;
         }
     }
     private String parseWebsiteIfPresent() {
         try {
-            // Ищем элемент <strong> с текстом "Веб-сайт",
-            // затем берём его первый соседний элемент <a> (following-sibling::a[1]).
-            WebElement websiteLink = webDriver.findElement(By.xpath(
-                    "//strong[contains(text(),'Веб-сайт')]/following-sibling::a[1]"
-            ));
-            return websiteLink.getText().trim();
+            // Ищем заголовок "Веб-сайт"
+            WebElement websiteHeader = webDriver.findElement(By.xpath("//strong[contains(text(),'Веб-сайт')]"));
+
+            // Ищем все ссылки <a>, которые находятся сразу после заголовка
+            List<WebElement> websiteLinks = websiteHeader.findElements(By.xpath("following-sibling::a"));
+
+            // Извлекаем текст из найденных ссылок и объединяем через запятую
+            return websiteLinks.stream()
+                    .map(WebElement::getText)
+                    .map(String::trim)
+                    .filter(website -> !website.isEmpty()) // Фильтруем пустые строки
+                    .collect(Collectors.joining(", "));
         } catch (NoSuchElementException e) {
             return null;
         }

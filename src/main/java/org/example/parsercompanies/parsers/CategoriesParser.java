@@ -26,6 +26,8 @@ public class CategoriesParser {
     private CategoryRepository categoryRepository;
     @Getter
     private boolean categoriesParsed = false;
+    private static final String INFO_FILE = Paths.get(System.getProperty("user.dir"), "cfg", "info.json").toString();
+    private final ObjectMapper objectMapper = new ObjectMapper();
     @Autowired
     public CategoriesParser(SettingsService settingsService, CategoryRepository categoryRepository) {
         this.settingsService = settingsService;

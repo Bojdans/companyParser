@@ -1,6 +1,7 @@
 package org.example.parsercompanies.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.Data;
 import lombok.Getter;
@@ -29,6 +30,19 @@ public class SettingsService {
     private Map<String, Object> settings;
     @Getter
     private ChromeOptions options;
+    @PostConstruct
+    public void openBrowser() {
+        String url = "http://localhost:8081/page";
+        String os = System.getProperty("os.name").toLowerCase();
+
+        try {
+            if (os.contains("win")) {
+                new ProcessBuilder("cmd", "/c", "start", url).start();
+            }
+        } catch (IOException e) {
+            System.err.println("Ошибка при открытии браузера: " + e.getMessage());
+        }
+    }
 
     public SettingsService() throws IOException {
         loadSettings();
