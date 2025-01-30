@@ -14,6 +14,8 @@ public class Company {
     private Long id; // Первичный ключ
     @Column
     private String url;
+    @Column(name = "rubric")
+    private String rubric;
     @Column(name = "organization_type")
     private String organizationType;
     @Column(name = "organization_name")

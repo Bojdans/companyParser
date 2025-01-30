@@ -170,7 +170,7 @@ public class CompanyParser {
         System.out.println(isCompaniesParsed());
         System.out.println(isLinksOfCompaniesParsed());
         webDriver = new ChromeDriver(
-                settingsService.getOptions().addArguments("--headless=new")
+                settingsService.getOptions().addArguments("--headless")
         );
         webDriver.manage().window().maximize();
 
@@ -317,29 +317,34 @@ public class CompanyParser {
         wait.until(ExpectedConditions.elementToBeClickable(By.id("input-13"))).click();
         checkForServerErrorAndRefreshIfNeeded();
 
-        // Перебираем список городов из настроек
-        for (String cityName : cities) {
+        // Объединяем список регионов и городов
+        Set<String> locations = new HashSet<>();
+        locations.addAll(cities);   // Города из настроек
+        locations.addAll(regions);  // Регионы из настроек
+
+        // Перебираем список регионов и городов из настроек
+        for (String locationName : locations) {
             if (!isParsing.get()) break;
             try {
                 WebElement searchInput = wait.until(
                         ExpectedConditions.visibilityOfElementLocated(By.id("location_search"))
                 );
 
-                // Очистка
+                // Очистка ввода
                 searchInput.sendKeys(Keys.CONTROL + "a");
                 searchInput.sendKeys(Keys.DELETE);
 
-                // Вводим нужный город
-                searchInput.sendKeys(cityName);
+                // Вводим название региона/города
+                searchInput.sendKeys(locationName);
                 checkForServerErrorAndRefreshIfNeeded();
 
                 // Ждём появления в дереве
                 List<WebElement> results = webDriver.findElements(By.cssSelector(".v-treeview-node"));
                 for (WebElement result : results) {
                     WebElement label = result.findElement(By.cssSelector(".v-treeview-node__label"));
-                    String foundCity = label.getText().trim();
+                    String foundLocation = label.getText().trim();
 
-                    if (foundCity.contains(cityName)) {
+                    if (foundLocation.contains(locationName)) {
                         WebElement checkbox = result.findElement(By.cssSelector(".v-treeview-node__checkbox"));
                         String checkboxClass = checkbox.getAttribute("class");
                         if (!checkboxClass.contains("mdi-checkbox-marked")) {
@@ -351,7 +356,7 @@ public class CompanyParser {
                 }
                 Thread.sleep((long) (parsingDelay * 1000));
             } catch (Exception e) {
-                System.err.println("Error applying city filter: " + cityName + " => " + e.getMessage());
+                System.err.println("Error applying location filter: " + locationName + " => " + e.getMessage());
             }
         }
 
@@ -666,6 +671,18 @@ public class CompanyParser {
         } catch (Exception e) {
             System.err.println("Ошибка при парсинге названия компании: " + e.getMessage());
         }
+        //рубрика
+
+
+        try {
+            WebElement industryElement = webDriver.findElement(By.xpath(
+                    "//div[contains(text(),'Вид деятельности')]/following-sibling::div/a"
+            ));
+            company.setRubric(industryElement.getText());
+        } catch (NoSuchElementException e) {
+        }
+
+
 
         // Учредитель и должность
         try {

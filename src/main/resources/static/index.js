@@ -566,6 +566,7 @@ async function fetchCompanies() {
                 : '';
 
             row.innerHTML = `
+                <td>${company.rubric || ''}</td>
                 <td>${company.organizationType || ''}</td>
                 <td>${company.organizationName || ''}</td>
                 <td>${company.founder || ''}</td>
