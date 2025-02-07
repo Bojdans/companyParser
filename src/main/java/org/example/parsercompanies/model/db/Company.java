@@ -76,7 +76,7 @@ public class Company {
     private String governmentPurchasesSupplier = "0 руб"; // Госзакупки (Поставщик)
 
     @Column(name = "active_company")
-    private Boolean activeCompany; // Действующая компания
+    private Boolean activeCompany = true; // Действующая компания
 
     @Column(name = "registration_date")
     private String registrationDate; // Дата регистрации

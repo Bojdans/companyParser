@@ -202,9 +202,6 @@ public class CompanyParser {
                 } catch (Exception ignored) {
                 }
             }
-            // Ставим флаг, что парсинг завершён
-            companiesParsed = true;
-
             // Снимаем признак "парсинг идёт"
             isParsing.set(false);
         }
@@ -344,7 +341,7 @@ public class CompanyParser {
                     WebElement label = result.findElement(By.cssSelector(".v-treeview-node__label"));
                     String foundLocation = label.getText().trim();
 
-                    if (foundLocation.contains(locationName)) {
+                    if (foundLocation.replaceAll("\\d", "").trim().equals(locationName)) {
                         WebElement checkbox = result.findElement(By.cssSelector(".v-treeview-node__checkbox"));
                         String checkboxClass = checkbox.getAttribute("class");
                         if (!checkboxClass.contains("mdi-checkbox-marked")) {
@@ -379,17 +376,14 @@ public class CompanyParser {
         System.out.println("Переходим к парсингу...");
         System.out.println("Начинаем с currentPage: " + currentPage);
 
-        // --- ВСТАВЛЕННЫЙ БЛОК: если при старте уже currentPage > pagesDeep, сбрасываем на 1
+        // Если currentPage > pagesDeep или БД пуста, но ссылки ещё не спарсены, сбрасываем currentPage на 1
         if (((currentPage != null && currentPage > pagesDeep) || companyRepository.findAll().isEmpty()) && !linksOfCompaniesParsed) {
-            System.out.println("currentPage (" + currentPage + ") > pagesDeep (" + pagesDeep
-                    + ") при старте. Сбрасываем на 1...");
+            System.out.println("currentPage (" + currentPage + ") > pagesDeep (" + pagesDeep + ") при старте. Сбрасываем на 1...");
             currentPage = 1L;
             if (rememberParsingPosition) {
-                // Сохраняем, чтобы в info.json теперь было currentPage=1
                 saveProgress(currentPage, false, false);
             }
         }
-        // --- конец вставленного блока
 
         WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(WAIT_TIMEOUT_SECONDS));
 
@@ -401,24 +395,19 @@ public class CompanyParser {
                 wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("main")));
                 checkForServerErrorAndRefreshIfNeeded();
 
-                // Проверяем, нет ли сообщения "Не найдено ни одного юридического лица"
-                List<WebElement> notFoundElements = webDriver.findElements(
-                        By.xpath("/html/body/main/div[2]/div/div[2]/div/p")
-                );
-                if (!notFoundElements.isEmpty()
-                        && notFoundElements.get(0).getText().contains("Не найдено ни одного юридического лица")) {
-                    System.out.println("No more companies found. Stopping pagination.");
-                    break;
-                }
-
                 // Ищем строки в таблице
                 List<WebElement> rows = webDriver
                         .findElement(By.className("select-section"))
                         .findElements(By.cssSelector("table.table-lg tbody tr"));
 
                 if (rows.isEmpty()) {
+                    logStatus = "Страниц больше нет: " + currentPage;
+                    this.linksOfCompaniesParsed = true;
+                    if (rememberParsingPosition) {
+                        saveProgress(currentPage, false, true);
+                    }
                     System.out.println("No rows found on currentPage " + currentPage);
-                    break;
+                    return;
                 }
 
                 // Собираем ссылки
@@ -429,19 +418,17 @@ public class CompanyParser {
                         String link = linkElement.getAttribute("href");
                         companyLinks.add(link);
                         System.out.println("Extracted link: " + link);
-                        // Здесь можно сохранить в БД, если нужно
                         companyRepository.save(new Company(link));
                     } catch (Exception e) {
                         System.err.println("Error extracting link from row: " + e.getMessage());
                     }
-
                     checkForServerErrorAndRefreshIfNeeded();
                 }
-                logStatus = "спарсена страница: " + currentPage;
+
+                logStatus = "Спарсена страница: " + currentPage;
                 System.out.println("Page " + currentPage + " processed. Total links extracted: " + companyLinks.size());
                 currentPage++;
 
-                // Если нужно запоминать позицию — сохраняем прогресс
                 if (rememberParsingPosition) {
                     saveProgress(currentPage, false, false);
                 }
@@ -454,22 +441,14 @@ public class CompanyParser {
             }
         }
 
-        // Если дошли сюда и currentPage > pagesDeep => значит все ссылки по страницам собраны
-        if (currentPage > pagesDeep) {
+        // Если прошли все страницы или ссылки уже были спарсены
+        if (currentPage > pagesDeep || isLinksOfCompaniesParsed()) {
             logStatus = "Прошли все страницы";
-            System.out.println("Парсер завершил работу: прошли все страницы (currentPage="
-                    + currentPage + " > pagesDeep=" + pagesDeep + ")");
+            System.out.println("Парсер завершил работу: прошли все страницы (currentPage=" + currentPage + " > pagesDeep=" + pagesDeep + ")");
             this.linksOfCompaniesParsed = true;
-            // Ставим currentPage на 1, чтобы в следующий раз начинать заново
             currentPage = 1L;
-            // Записываем финальное состояние
             if (rememberParsingPosition) {
                 saveProgress(currentPage, false, true);
-            }
-        } else {
-            this.linksOfCompaniesParsed = false;
-            if (rememberParsingPosition) {
-                saveProgress(currentPage, false, false);
             }
         }
     }
@@ -600,6 +579,7 @@ public class CompanyParser {
 
         // Выберем все Company, у которых parsed = false
         List<Company> companiesToParse = companyRepository.findAllByParsed(false);
+        System.out.println(companiesToParse);
         // Если репозиторий не поддерживает такой метод —
         // нужно создать запрос вручную или обойтись findAll().
         // Ниже предполагается, что метод findAllByParsedFalse() существует.
@@ -624,12 +604,25 @@ public class CompanyParser {
                 // Пример заглушки:
                 Thread.sleep((long) (parsingDelay * 1000));
                 System.out.println("Собрали информацию по " + c.getUrl());
-                System.out.println(parseCompanyInfo(c));
-                companyRepository.save(parseCompanyInfo(c));
+                Company parsedCompany = parseCompanyInfo(c);
+                System.out.println(parsedCompany);
+                if (parsedCompany != null) {
+                    try {
+                        companyRepository.save(parsedCompany);
+                        System.out.println("Сохранена компания: " + parsedCompany.getUrl());
+                    } catch (Exception dbException) {
+                        if (dbException.getMessage().contains("A UNIQUE constraint failed")) {
+                            System.err.println("Ошибка сохранения: дубликат компании " + c.getUrl());
+                            companyRepository.delete(c);
+                        } else {
+                            throw dbException; // если ошибка другая, выбрасываем
+                        }
+                    }
+                }
                 logStatus = "спарсена компания: " + c.getId();
-
             } catch (Exception e) {
-                System.err.println("Ошибка при парсинге ссылки " + c.getUrl() + ": " + e.getMessage());
+                System.err.println("-----------------Ошибка при парсинге компании-------------"  + "\n" + c + "\n" + "---------------------------------------------" + "\n" + " -------------ошибка--------- " + "\n" +  e.getMessage() + "\n" + " -------------путь--------- " + "\n" +  e.getStackTrace()  + "\n" + "------------------------------------------------------------------------");
+
             }
         }
 
@@ -849,7 +842,7 @@ public class CompanyParser {
     }
 
     private Integer parseNumberOfEmployees() {
-        String digits = webDriver.findElement(By.xpath("/html/body/main/div[2]/div/article/div/div[4]/div[2]/div[3]/div[2]")).getText().replaceAll("\\D+", "");
+        String digits = webDriver.findElement(By.xpath("/html/body/main/div[2]/div/article/div/div[4]/div[2]/div[3]/div[2]")).getText().replaceAll("\\D+.*", "").replaceAll("\\D-.*", "");
         if (digits.isEmpty()) return 0;
         return Integer.valueOf(digits);
     }

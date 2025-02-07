@@ -304,11 +304,11 @@ function refreshSettings() {
             if (!response.ok) {
                 throw new Error('Failed to save settings');
             }
-            loadRubricsFromServer()
         })
         .catch(error => {
 
         });
+    loadRubricsFromServer()
 }
 
 // Функция для получения выбранных городов
@@ -358,7 +358,7 @@ function loadRubricsFromServer() {
             rubrics = data;
             console.log("Загруженные rubrics:", rubrics);
 
-            renderRubricTable(rubrics);
+            renderRubricTable(data);
 
             // Опционально: загрузить и отобразить "активные" рубрики (пример)
             fetch("/api/getActiveCategories")
@@ -531,8 +531,45 @@ function cleanCompanies() {
         //функция рендера таблицы городов
         fetchCompanies().then(response => {
             logArea.textContent = "Очищено"
-            const tableBody = document.querySelector('#company-table tbody').innerHTML = "";
             fetchCompanies()
+            const settings = {
+                onlyInOperation: document.getElementById('active-only').checked,
+                partOfGovernmentProcurement: document.getElementById('tenders').checked,
+                pagesDeep: parseInt(document.getElementById('depth').value, 10),
+                parsingDelay: parseFloat(document.getElementById('pause').value),
+                autoExcelOpen: document.getElementById('export').checked,
+                onlyMainOKVED: document.getElementById('okved').checked,
+                rememberParsingPosition: document.getElementById('remember').checked,
+                proxy: document.getElementById('proxy').value,
+                proxyLogin: document.getElementById('login-proxy').value,
+                proxyPassword: document.getElementById('password-proxy').value,
+                cities: [],
+                regions: [],
+            };
+            rubrics = rubrics.map(rubric => rubric = {
+                id: rubric.id,
+                name: rubric.name,
+                active: false,
+                level: rubric.level
+            })
+            saveRubrics()
+            // Отправка данных на сервер
+            fetch('/api/settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(settings)
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to save settings');
+                    }
+                    loadRubricsFromServer()
+                    loadSettingsFromServer()
+                })
+                .catch(error => {
+                });
         })
     })
 }
@@ -610,7 +647,7 @@ const observer = new IntersectionObserver(entries => {
     if (entries[0].isIntersecting) {
         fetchCompanies();
     }
-}, { rootMargin: "100px" });
+}, {rootMargin: "100px"});
 
 observer.observe(document.querySelector("#load-more"));
 
