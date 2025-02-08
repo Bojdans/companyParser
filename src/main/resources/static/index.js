@@ -14,7 +14,7 @@ function switchTab(tabId) {
     buttons[[...tabs].findIndex(tab => tab.id === tabId)].classList.add('active');
 }
 
-// Генерация рубрик в таблице
+
 function renderSideRubrics(rubricsSide) {
     const rubricTableBody = document.querySelector("#rubric-table-side tbody");
     rubricTableBody.innerHTML = ""
@@ -27,18 +27,18 @@ function renderSideRubrics(rubricsSide) {
     });
 }
 
-//Изменение размеров таблицы
+
 document.addEventListener("DOMContentLoaded", () => {
     const table = document.querySelector("#company-table");
     const headers = table.querySelectorAll("th");
 
     headers.forEach((header) => {
-        // Создаем элемент для изменения ширины
+        
         const resizer = document.createElement("div");
         resizer.classList.add("resizer");
         header.appendChild(resizer);
 
-        // Обработка событий для изменения ширины
+        
         resizer.addEventListener("mousedown", (e) => {
             const startX = e.pageX;
             const startWidth = header.offsetWidth;
@@ -60,20 +60,20 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 let regions = null
 
-// Функция для скрытия/показа всего контейнера регионов
+
 function toggleRegionContainer() {
     const container = document.querySelector('.region-container');
     container.style.display = container.style.display === 'block' ? 'none' : 'block';
 }
 
-// Функция для скрытия/показа дочерних городов
+
 function toggleSubRegions(regionId) {
     const subRegions = document.getElementById(`region-${regionId}`);
     const isVisible = subRegions.style.display === 'block';
     subRegions.style.display = isVisible ? 'none' : 'block';
 }
 
-// Функция для выбора/снятия выбора всех городов региона
+
 function selectAllCities(regionCheckbox, regionId) {
     const subRegions = document.getElementById(`region-${regionId}`);
     const checkboxes = subRegions.querySelectorAll('input[type="checkbox"]');
@@ -82,18 +82,18 @@ function selectAllCities(regionCheckbox, regionId) {
     });
 }
 
-// Функция генерации списка регионов и городов
+
 function generateRegions() {
     const container = document.querySelector('.region-container');
     const regionsContainer = document.createElement('div');
     regionsContainer.classList.add('regions-list');
-    container.appendChild(regionsContainer); // Контейнер для регионов
+    container.appendChild(regionsContainer); 
 
     regions.forEach((region) => {
         const regionDiv = document.createElement('div');
         regionDiv.classList.add('region');
 
-        // Кнопка для раскрытия дочерних городов
+        
         if (region.daughters.length > 0) {
             const regionButton = document.createElement('button');
             regionButton.classList.add('expand-button');
@@ -108,7 +108,7 @@ function generateRegions() {
             regionButton.onclick = () => toggleSubRegions(region.id);
             regionDiv.appendChild(regionButton);
         }
-        // Лейбл и чекбокс для региона
+        
         const regionLabel = document.createElement('label');
         const regionCheckbox = document.createElement('input');
         regionCheckbox.type = 'checkbox';
@@ -117,13 +117,13 @@ function generateRegions() {
         regionLabel.appendChild(regionCheckbox);
         regionLabel.appendChild(document.createTextNode(` ${region.name}`));
 
-        // Контейнер для дочерних городов
+        
         const subRegionsDiv = document.createElement('div');
         subRegionsDiv.classList.add('sub-regions');
         subRegionsDiv.id = `region-${region.id}`;
-        subRegionsDiv.style.display = 'none'; // Скрываем по умолчанию
+        subRegionsDiv.style.display = 'none'; 
 
-        // Генерация дочерних городов
+        
         region.daughters.forEach((city) => {
             const cityDiv = document.createElement('div');
             cityDiv.classList.add('city');
@@ -139,14 +139,14 @@ function generateRegions() {
             subRegionsDiv.appendChild(cityDiv);
         });
 
-        // Добавление региона и его городов в контейнер
+        
         regionDiv.appendChild(regionLabel);
         regionDiv.appendChild(subRegionsDiv);
         regionsContainer.appendChild(regionDiv);
     });
 }
 
-//Поиск городов и регионов
+
 function filterRegionsAndCities() {
     const query = document.getElementById('search-input').value.toLowerCase();
     const regionsList = document.querySelectorAll('.region');
@@ -157,41 +157,41 @@ function filterRegionsAndCities() {
         const cities = subRegions.querySelectorAll('.city');
         let match = false;
 
-        // Проверяем совпадение с названием региона
+        
         if (regionLabel.includes(query)) {
             match = true;
-            subRegions.style.display = 'block'; // Разворачиваем регион
+            subRegions.style.display = 'block'; 
         } else {
-            subRegions.style.display = 'none'; // Скрываем города, если регион не совпадает
+            subRegions.style.display = 'none'; 
         }
 
-        // Проверяем совпадение с названиями городов
-        let cityMatch = false; // Отслеживаем наличие подходящих городов
+        
+        let cityMatch = false; 
         cities.forEach((cityElement) => {
             const cityLabel = cityElement.querySelector('label').textContent.toLowerCase();
             if (cityLabel.includes(query)) {
-                cityElement.style.display = 'block'; // Показываем подходящий город
+                cityElement.style.display = 'block'; 
                 match = true;
                 cityMatch = true;
             } else {
-                cityElement.style.display = 'none'; // Скрываем город, если он не совпадает
+                cityElement.style.display = 'none'; 
             }
         });
 
-        // Если регион сам не подходит, но есть совпадающие города, разворачиваем его
+        
         if (!regionLabel.includes(query) && cityMatch) {
             subRegions.style.display = 'block';
         }
 
-        // Показываем или скрываем регион в зависимости от совпадений
+        
         regionElement.style.display = match ? 'block' : 'none';
     });
 }
 
-// Инициализация при загрузке страницы
 
-//настройки парсинга
-// Функция для загрузки настроек с сервера
+
+
+
 function loadSettingsFromServer() {
     fetch('/api/settings', {
         method: 'GET',
@@ -206,7 +206,7 @@ function loadSettingsFromServer() {
             return response.json();
         })
         .then((settings) => {
-            // Устанавливаем значения в элементы формы
+            
             document.getElementById('active-only').checked = settings.onlyInOperation;
             document.getElementById('tenders').checked = settings.partOfGovernmentProcurement;
             document.getElementById('depth').value = settings.pagesDeep;
@@ -218,7 +218,7 @@ function loadSettingsFromServer() {
             document.getElementById('login-proxy').value = settings.proxyLogin || '';
             document.getElementById('password-proxy').value = settings.proxyPassword || '';
 
-            // Обновляем регионы и города
+            
             updateRegionsAndCities(settings.cities, settings.regions);
         })
         .catch((error) => {
@@ -227,16 +227,16 @@ function loadSettingsFromServer() {
         });
 }
 
-// Функция для обновления списка городов и регионов на странице
+
 function updateRegionsAndCities(cities, regions) {
-    // Сбрасываем предыдущие выборы
+    
     document.querySelectorAll('.city input[type="checkbox"]').forEach((checkbox) => {
         checkbox.checked = false;
     });
     document.querySelectorAll('.region input[type="checkbox"]').forEach((checkbox) => {
         checkbox.checked = false;
     });
-    // Устанавливаем выбранные города
+    
     cities.forEach((cityName) => {
         document.querySelectorAll('.city label').forEach((label) => {
             if (label.textContent.trim().toLowerCase() === cityName.trim().toLowerCase()) {
@@ -247,7 +247,7 @@ function updateRegionsAndCities(cities, regions) {
         });
     });
 
-    // Устанавливаем выбранные регионы
+    
     regions.forEach((regionName) => {
         document.querySelectorAll('.region label').forEach((label) => {
             if (label.textContent.trim().toLowerCase() === regionName.trim().toLowerCase()) {
@@ -258,7 +258,7 @@ function updateRegionsAndCities(cities, regions) {
     });
 }
 
-// Вызываем загрузку настроек при загрузке страницы
+
 document.addEventListener('DOMContentLoaded', () => {
     fetch("http://localhost:8081/api/getRegions").then(response => {
         if (!response.ok) {
@@ -275,7 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
     })
 });
 
-// Сохраняет настройки на сервере
+
 function refreshSettings() {
     const settings = {
         onlyInOperation: document.getElementById('active-only').checked,
@@ -288,11 +288,11 @@ function refreshSettings() {
         proxy: document.getElementById('proxy').value,
         proxyLogin: document.getElementById('login-proxy').value,
         proxyPassword: document.getElementById('password-proxy').value,
-        cities: getSelectedCities(), // Добавьте логику для сбора данных по городам
-        regions: getSelectedRegions(),// Добавьте логику для сбора данных по рубрикам
+        cities: getSelectedCities(), 
+        regions: getSelectedRegions(),
     };
     saveRubrics()
-    // Отправка данных на сервер
+    
     fetch('/api/settings', {
         method: 'POST',
         headers: {
@@ -304,6 +304,7 @@ function refreshSettings() {
             if (!response.ok) {
                 throw new Error('Failed to save settings');
             }
+            window.location.reload(true);
         })
         .catch(error => {
 
@@ -311,7 +312,7 @@ function refreshSettings() {
     loadRubricsFromServer()
 }
 
-// Функция для получения выбранных городов
+
 function getSelectedCities() {
     const selectedCities = [];
     document.querySelectorAll('.city input[type="checkbox"]:checked').forEach((checkbox) => {
@@ -320,7 +321,7 @@ function getSelectedCities() {
     return selectedCities;
 }
 
-// Функция для получения выбранных регионов
+
 function getSelectedRegions() {
     const selectedRegions = [];
     document.querySelectorAll('.region > label > input[type="checkbox"]:checked').forEach((checkbox) => {
@@ -330,18 +331,15 @@ function getSelectedRegions() {
     return selectedRegions;
 }
 
-// Вызываем загрузку настроек при загрузке страницы
+
 document.addEventListener('DOMContentLoaded', () => {
     loadSettingsFromServer();
 });
 
-// Глобальный массив для хранения рубрик
+
 let rubrics = [];
 
-/**
- * Загрузка рубрик с сервера, заполнение массива rubrics
- * и отрисовка таблицы.
- */
+
 function loadRubricsFromServer() {
     fetch("/api/getCategories", {
         method: "GET",
@@ -354,13 +352,12 @@ function loadRubricsFromServer() {
             return response.json();
         })
         .then((data) => {
-            // Здесь data — массив объектов вида {id, name, active, level}
+            
             rubrics = data;
-            console.log("Загруженные rubrics:", rubrics);
 
             renderRubricTable(data);
 
-            // Опционально: загрузить и отобразить "активные" рубрики (пример)
+            
             fetch("/api/getActiveCategories")
                 .then((response) => {
                     if (!response.ok) {
@@ -369,7 +366,7 @@ function loadRubricsFromServer() {
                     return response.json();
                 })
                 .then((activeData) => {
-                    console.log("Активные рубрики:", activeData);
+
                     renderSideRubrics(activeData);
                 })
                 .catch((err) => {
@@ -381,18 +378,14 @@ function loadRubricsFromServer() {
         });
 }
 
-/**
- * Рендерим таблицу рубрик. В каждой строке создаём <input>
- * для 'name', 'active' (checkbox), 'level' (number).
- * Обратите внимание, что при onchange вызываем updateRubric(rubric.id, ...)
- */
+
 function renderRubricTable(rubricsData) {
-    console.log("Рендер таблицы рубрик");
+
     const tableBody = document.getElementById("rubric-table");
     tableBody.innerHTML = "";
 
     rubricsData.forEach((rubric) => {
-        // Каждая rubric имеет поля: { id, name, active, level }
+        
         const row = document.createElement("tr");
 
         row.innerHTML = `
@@ -429,29 +422,23 @@ addEventListener("DOMContentLoaded", () => {
     loadRubricsFromServer()
 })
 
-/**
- * Функция обновления рубрики в массиве rubrics по её ID.
- * Мы ищем нужный объект по rubric.id и выставляем новое значение.
- */
+
 function updateRubric(rubricId, field, newValue) {
-    // Ищем индекс в массиве rubrics по совпадению id
+    
     const index = rubrics.findIndex(r => r.id === rubricId);
     if (index === -1) {
         console.error(`Rubric with id=${rubricId} не найден`);
         return;
     }
 
-    // Обновляем нужное поле (name, active, level) в объекте
+    
     rubrics[index][field] = newValue;
-    console.log("Обновили rubrics:", rubrics);
+
 }
 
-/**
- * Сохранение (обновление) рубрик на сервере.
- * Отправляем массив rubrics (со всеми изменениями) методом POST.
- */
+
 function saveRubrics() {
-    console.log("Сохраняем (обновляем) рубрики на сервер:", rubrics);
+
 
     fetch("/api/updateCategories", {
         method: "POST",
@@ -464,19 +451,16 @@ function saveRubrics() {
             if (!response.ok) {
                 throw new Error("Failed to update rubrics");
             }
-            console.log("Успешно обновили рубрики на сервере");
-            // Если нужно, можно перезагрузить таблицу или показать уведомление
-            // loadRubricsFromServer();
+
+            
+            
         })
         .catch((error) => {
             console.error("Ошибка при обновлении рубрик:", error);
         });
 }
 
-/**
- * Пример функции поиска. Ищем по полю name в локальном массиве rubrics.
- * Если rubrics пуст, можно либо ничего не делать, либо сделать запрос на сервер.
- */
+
 function searchCategories() {
     const query = document
         .getElementById("rubric-search")
@@ -489,13 +473,8 @@ function searchCategories() {
         );
         renderRubricTable(filtered);
     } else {
-        // Если rubrics пуст, можно (при желании) обратиться к серверу:
-        /*
-        fetch(`/api/searchCategories?query=${encodeURIComponent(query)}`)
-            .then(resp => resp.json())
-            .then(filtered => renderRubricTable(filtered))
-            .catch(err => console.error("Ошибка при поиске:", err));
-        */
+        
+        
     }
 }
 
@@ -528,10 +507,9 @@ function cleanCompanies() {
     fetch('api/cleanCompanies', {
         method: "POST"
     }).then(response => {
-        //функция рендера таблицы городов
+        
         fetchCompanies().then(response => {
             logArea.textContent = "Очищено"
-            fetchCompanies()
             const settings = {
                 onlyInOperation: document.getElementById('active-only').checked,
                 partOfGovernmentProcurement: document.getElementById('tenders').checked,
@@ -553,7 +531,7 @@ function cleanCompanies() {
                 level: rubric.level
             })
             saveRubrics()
-            // Отправка данных на сервер
+            
             fetch('/api/settings', {
                 method: 'POST',
                 headers: {
@@ -567,6 +545,8 @@ function cleanCompanies() {
                     }
                     loadRubricsFromServer()
                     loadSettingsFromServer()
+                    document.querySelector("#company-table tbody").innerHTML = ""
+                    window.location.reload(true);
                 })
                 .catch(error => {
                 });
@@ -574,10 +554,10 @@ function cleanCompanies() {
     })
 }
 
-let page = 0; // Начинаем с первой страницы
-const pageSize = 50; // Количество записей на страницу
-let isLoading = false; // Флаг загрузки
-let hasMoreData = true; // Флаг, показывающий, есть ли еще данные
+let page = 0; 
+const pageSize = 50; 
+let isLoading = false; 
+let hasMoreData = true; 
 
 async function fetchCompanies() {
     if (isLoading || !hasMoreData) return;
@@ -588,8 +568,8 @@ async function fetchCompanies() {
         const data = await response.json();
 
         if (data.content.length === 0) {
-            hasMoreData = false; // Данных больше нет, прекращаем загрузку
-            observer.disconnect(); // Отключаем observer
+            hasMoreData = false; 
+            observer.disconnect(); 
             return;
         }
 
@@ -634,7 +614,7 @@ async function fetchCompanies() {
         });
 
         tableBody.appendChild(fragment);
-        page++; // Переходим к следующей странице
+        page++; 
     } catch (error) {
         console.error("Ошибка загрузки данных:", error);
     } finally {
@@ -642,7 +622,7 @@ async function fetchCompanies() {
     }
 }
 
-// **Добавляем автоматическую загрузку при прокрутке вниз**
+
 const observer = new IntersectionObserver(entries => {
     if (entries[0].isIntersecting) {
         fetchCompanies();
@@ -655,7 +635,7 @@ window.onload = fetchCompanies;
 
 function startParsing() {
     startPollingStatus();
-    // Запускаем парсинг на сервере
+    
     fetch('api/startParsingCompanies', {
         method: "POST"
     })
@@ -669,19 +649,19 @@ function startParsing() {
 let pollingIntervalId = null;
 
 function startPollingStatus() {
-    console.log("начинаем получать статус")
-    // Останавливаем старый опрос, если он был запущен
+
+    
     stopPollingStatus();
-    // Интервал опроса (в миллисекундах), например 2 секунды
+    
     const intervalMs = 2000;
     pollingIntervalId = setInterval(() => {
         fetch('api/getLogStatus')
             .then(response => response.text())
             .then(textData => {
-                // Текст, который пришёл с сервера, выводим в logArea
-                // logArea — условное имя textarea или div
-                // Если нужно «дописывать» данные, можно использовать +=
-                // Если нужно перезаписывать — просто =
+                
+                
+                
+                
                 logArea.textContent = textData;
             })
             .catch(err => {

@@ -19,13 +19,13 @@ public class SettingsController {
         this.settingsService = settingsService;
     }
 
-    // Получение всех настроек
+    
     @GetMapping
     public ResponseEntity<Map<String, Object>> getSettings() {
         return ResponseEntity.ok(settingsService.getSettings());
     }
 
-    // Обновление настроек (полного объекта)
+    
     @PostMapping
     public ResponseEntity<String> updateSettings(@RequestBody Map<String, Object> newSettings) {
         try {

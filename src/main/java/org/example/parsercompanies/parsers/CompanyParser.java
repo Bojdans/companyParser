@@ -26,6 +26,8 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Component
@@ -36,7 +38,7 @@ public class CompanyParser {
     @Autowired
     private SettingsService settingsService;
 
-    // Основные параметры для парсинга (из settingsConfig.json)
+
     private Long pagesDeep;
     private Double parsingDelay;
     private List<String> cities;
@@ -46,12 +48,12 @@ public class CompanyParser {
     private boolean partOfGovernmentProcurement;
     private boolean rememberParsingPosition;
 
-    // Параметры для "info.json"
-    private Long currentPage;            // текущая (или последняя спарсенная) страница
-    private boolean companiesParsed;     // завершён ли парсинг "компаний" целиком
-    private boolean linksOfCompaniesParsed; // собраны ли все ссылки
+
+    private Long currentPage;
+    private boolean companiesParsed;
+    private boolean linksOfCompaniesParsed;
     private String logStatus = "ничего не делаем";
-    // Пути к JSON-файлам
+
     private static final String INFO_FILE = Paths.get(System.getProperty("user.dir"), "cfg", "info.json").toString();
     private static final String SETTINGS_FILE = Paths.get(System.getProperty("user.dir"), "cfg", "settingsConfig.json").toString();
 
@@ -64,17 +66,14 @@ public class CompanyParser {
     private final AtomicBoolean isParsing = new AtomicBoolean(false);
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
-    // Время ожидания в секундах
+
     private static final int WAIT_TIMEOUT_SECONDS = 30;
     @Autowired
     private CompanyRepository companyRepository;
 
-    /**
-     * Загружаем инфо о текущей странице из info.json (currentPage, companiesParsed, linksParsed)
-     * + настройки из settingsConfig.json (pagesDeep, parsingDelay и т.п.).
-     */
+
     public void loadParsingInfo() throws IOException {
-        // 1) Загружаем info.json (если существует)
+
         File infoFile = new File(INFO_FILE);
         if (infoFile.exists()) {
             InfoJson info = objectMapper.readValue(infoFile, InfoJson.class);
@@ -84,14 +83,14 @@ public class CompanyParser {
             this.linksOfCompaniesParsed = info.isLinksParsed();
 
         } else {
-            // Если файла нет, начинаем с 1й страницы
+
             System.err.println("Info file not found: " + INFO_FILE);
             this.currentPage = 1L;
             this.companiesParsed = false;
             this.linksOfCompaniesParsed = false;
         }
 
-        // 2) Загружаем настройки из settingsConfig.json
+
         File settingsFile = new File(SETTINGS_FILE);
         if (settingsFile.exists()) {
             SettingsConfig settings = objectMapper.readValue(settingsFile, SettingsConfig.class);
@@ -105,15 +104,14 @@ public class CompanyParser {
             this.rememberParsingPosition = settings.isRememberParsingPosition();
         } else {
             System.err.println("Settings file not found: " + SETTINGS_FILE);
-            // При отсутствии настроек выставим что-то по умолчанию
+
             this.pagesDeep = 1L;
             this.parsingDelay = 2.0;
             this.cities = Collections.emptyList();
             this.regions = Collections.emptyList();
         }
 
-        // Если логика проекта подразумевает "начинать заново" при уже завершённом парсинге (companiesParsed или linksParsed),
-        // то можно сбросить currentPage. Например:
+
         if (this.companiesParsed || companyRepository.findAll().isEmpty()) {
             System.out.println("Парсинг ранее завершался, начинаем заново с 1й страницы.");
             logStatus = "Данные собраны, начинаем заново";
@@ -124,42 +122,39 @@ public class CompanyParser {
         }
     }
 
-    /**
-     * Старт парсинга в отдельном потоке.
-     */
+
     public void startParsing() throws IOException, InterruptedException {
-        // 1. Проверяем, не идёт ли уже парсинг
+
         if (isParsing.get()) {
             System.out.println("Parsing is already running.");
             return;
         }
 
-        // 2. Загружаем настройки
+
         settingsService.reloadWebDriver();
         logStatus = "Загрузка настроек";
         System.out.println("Загрузка настроек");
 
-        // 3. Делаем разумную попытку дождаться, пока сервис настроек будет сконфигурирован
-        //    (если нужно действительно подождать некоторое время, а не просто "пропустить")
+
         int tries = 0;
         while (!settingsService.isConfigured() && tries < 10) {
             System.out.println("Ждём, пока settingsService будет сконфигурирован...");
             try {
-                Thread.sleep(1000); // ждём 1 секунду
+                Thread.sleep(1000);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 return;
             }
             tries++;
         }
-        // Если после 10 попыток всё ещё не настроено — уходим
+
         if (!settingsService.isConfigured()) {
             logStatus = "Настройки так и не были загружены — завершаем.";
             System.out.println("Настройки так и не были загружены — завершаем.");
             return;
         }
-        // Дополнительно, если loadParsingInfo() должна выполняться
-        // только 1 раз и не блокирует основной поток — можно оставить здесь
+
+
         loadParsingInfo();
 
         companiesParsed = false;
@@ -175,19 +170,17 @@ public class CompanyParser {
         webDriver.manage().window().maximize();
 
         try {
-            // 5.2 Переходим на страницу
-            webDriver.get("https://checko.ru/search/advanced");
-            checkForServerErrorAndRefreshIfNeeded();
 
-            // 5.3 Применяем фильтры
+            webDriver.get("https://checko.ru/search/advanced");
+
 
             if (!isLinksOfCompaniesParsed()) {
                 applyFilters();
-                // 5.4 Парсим ссылки
+
                 extractAndSaveCompanyLinks();
             }
 
-            // Если ссылки собраны, но данные ещё не распарсены, продолжаем
+
             if (linksOfCompaniesParsed && !companiesParsed && isParsing.get()) {
                 parseAllCompanyLinks();
             }
@@ -195,14 +188,14 @@ public class CompanyParser {
             System.err.println("Error during parsing: " + e.getMessage());
             e.printStackTrace();
         } finally {
-            // 5.5 Всегда закрываем драйвер, если он был инициализирован
+
             if (webDriver != null) {
                 try {
                     webDriver.quit();
                 } catch (Exception ignored) {
                 }
             }
-            // Снимаем признак "парсинг идёт"
+
             isParsing.set(false);
         }
     }
@@ -214,23 +207,23 @@ public class CompanyParser {
         if (!isParsing.get()) return;
         System.out.println("Применяем чекбокс 1");
         checkAndToggleCheckbox();
-        checkForServerErrorAndRefreshIfNeeded();
+
 
         if (!isParsing.get()) return;
         System.out.println("Применяем города");
         applyCities();
-        checkForServerErrorAndRefreshIfNeeded();
+
 
         if (!isParsing.get()) return;
         System.out.println("Применяем категории");
         applyCategories();
-        checkForServerErrorAndRefreshIfNeeded();
+
 
         if (!isParsing.get()) return;
         if (partOfGovernmentProcurement) {
             System.out.println("Применяем чекбокс 1");
             checkAndTogglePartOfGovernmentProcurement();
-            checkForServerErrorAndRefreshIfNeeded();
+
         }
     }
 
@@ -242,14 +235,14 @@ public class CompanyParser {
                 ExpectedConditions.elementToBeClickable(By.id("input-11"))
         );
         categoriesButton.click();
-        checkForServerErrorAndRefreshIfNeeded();
+
 
         if (!isParsing.get()) return;
 
-        // Загружаем список категорий из БД
+
         List<Category> activeCategories = categoryRepository.findAllByActive(true);
 
-        // Учитывая, что некоторые названия могут содержать пробел, вырезаем часть после первого пробела
+
         Set<String> categoriesNames = activeCategories.stream()
                 .map(category -> {
                     String name = category.getName();
@@ -269,14 +262,13 @@ public class CompanyParser {
                     ExpectedConditions.visibilityOfElementLocated(By.id("activity_search"))
             );
 
-            // Очистка (выделить и удалить)
+
             searchInput.sendKeys(Keys.CONTROL + "a");
             searchInput.sendKeys(Keys.DELETE);
 
             searchInput.sendKeys(categoryName);
-            checkForServerErrorAndRefreshIfNeeded();
 
-            // Ждём появления в дереве
+
             List<WebElement> results = webDriver.findElements(By.cssSelector(".v-treeview-node"));
             for (WebElement result : results) {
                 try {
@@ -287,7 +279,7 @@ public class CompanyParser {
                         String checkboxClass = checkbox.getAttribute("class");
                         if (!checkboxClass.contains("mdi-checkbox-marked")) {
                             checkbox.click();
-                            checkForServerErrorAndRefreshIfNeeded();
+
                         }
                         break;
                     }
@@ -296,30 +288,29 @@ public class CompanyParser {
             }
         }
 
-        // Кнопка "Выбрать"
+
         WebElement selectButton = wait.until(
                 ExpectedConditions.elementToBeClickable(
                         By.xpath("/html/body/main/div[2]/div/div[4]/div/div/div[2]/div/div/div[3]/div[2]/button")
                 )
         );
         selectButton.click();
-        checkForServerErrorAndRefreshIfNeeded();
+
     }
 
     private void applyCities() throws InterruptedException {
         WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(WAIT_TIMEOUT_SECONDS));
         Thread.sleep(2000);
 
-        // Открываем список "Город"
+
         wait.until(ExpectedConditions.elementToBeClickable(By.id("input-13"))).click();
-        checkForServerErrorAndRefreshIfNeeded();
 
-        // Объединяем список регионов и городов
+
         Set<String> locations = new HashSet<>();
-        locations.addAll(cities);   // Города из настроек
-        locations.addAll(regions);  // Регионы из настроек
+        locations.addAll(cities);
+        locations.addAll(regions);
 
-        // Перебираем список регионов и городов из настроек
+
         for (String locationName : locations) {
             if (!isParsing.get()) break;
             try {
@@ -327,15 +318,14 @@ public class CompanyParser {
                         ExpectedConditions.visibilityOfElementLocated(By.id("location_search"))
                 );
 
-                // Очистка ввода
+
                 searchInput.sendKeys(Keys.CONTROL + "a");
                 searchInput.sendKeys(Keys.DELETE);
 
-                // Вводим название региона/города
-                searchInput.sendKeys(locationName);
-                checkForServerErrorAndRefreshIfNeeded();
 
-                // Ждём появления в дереве
+                searchInput.sendKeys(locationName);
+
+
                 List<WebElement> results = webDriver.findElements(By.cssSelector(".v-treeview-node"));
                 for (WebElement result : results) {
                     WebElement label = result.findElement(By.cssSelector(".v-treeview-node__label"));
@@ -346,7 +336,7 @@ public class CompanyParser {
                         String checkboxClass = checkbox.getAttribute("class");
                         if (!checkboxClass.contains("mdi-checkbox-marked")) {
                             checkbox.click();
-                            checkForServerErrorAndRefreshIfNeeded();
+
                         }
                         break;
                     }
@@ -357,26 +347,24 @@ public class CompanyParser {
             }
         }
 
-        // Нажимаем "Выбрать"
+
         WebElement selectButton = wait.until(
                 ExpectedConditions.elementToBeClickable(
                         By.xpath("/html/body/main/div[2]/div/div[5]/div/div/div[2]/div/div/div[3]/div[2]/button")
                 )
         );
         selectButton.click();
-        checkForServerErrorAndRefreshIfNeeded();
+
     }
 
-    /**
-     * Основной цикл парсинга ссылок.
-     */
+
     public void extractAndSaveCompanyLinks() {
         if (!isParsing.get()) return;
         logStatus = "Переходим к парсингу...";
         System.out.println("Переходим к парсингу...");
         System.out.println("Начинаем с currentPage: " + currentPage);
 
-        // Если currentPage > pagesDeep или БД пуста, но ссылки ещё не спарсены, сбрасываем currentPage на 1
+
         if (((currentPage != null && currentPage > pagesDeep) || companyRepository.findAll().isEmpty()) && !linksOfCompaniesParsed) {
             System.out.println("currentPage (" + currentPage + ") > pagesDeep (" + pagesDeep + ") при старте. Сбрасываем на 1...");
             currentPage = 1L;
@@ -390,12 +378,10 @@ public class CompanyParser {
         while (isParsing.get() && currentPage <= pagesDeep) {
             try {
                 webDriver.get("https://checko.ru/search/advanced?page=" + currentPage);
-                checkForServerErrorAndRefreshIfNeeded();
 
                 wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("main")));
-                checkForServerErrorAndRefreshIfNeeded();
 
-                // Ищем строки в таблице
+
                 List<WebElement> rows = webDriver
                         .findElement(By.className("select-section"))
                         .findElements(By.cssSelector("table.table-lg tbody tr"));
@@ -410,7 +396,7 @@ public class CompanyParser {
                     return;
                 }
 
-                // Собираем ссылки
+
                 List<String> companyLinks = new ArrayList<>();
                 for (WebElement row : rows) {
                     try {
@@ -422,7 +408,6 @@ public class CompanyParser {
                     } catch (Exception e) {
                         System.err.println("Error extracting link from row: " + e.getMessage());
                     }
-                    checkForServerErrorAndRefreshIfNeeded();
                 }
 
                 logStatus = "Спарсена страница: " + currentPage;
@@ -441,7 +426,7 @@ public class CompanyParser {
             }
         }
 
-        // Если прошли все страницы или ссылки уже были спарсены
+
         if (currentPage > pagesDeep || isLinksOfCompaniesParsed()) {
             logStatus = "Прошли все страницы";
             System.out.println("Парсер завершил работу: прошли все страницы (currentPage=" + currentPage + " > pagesDeep=" + pagesDeep + ")");
@@ -453,10 +438,7 @@ public class CompanyParser {
         }
     }
 
-    /**
-     * Сохраняем текущее состояние парсинга (currentPage, companiesParsed, linksParsed)
-     * в info.json — именно то, что нужно по условию.
-     */
+
     private void saveProgress(Long currentPage, boolean isCompleted, boolean isLinksParsed) {
         try {
             InfoJson infoJson = new InfoJson();
@@ -464,16 +446,14 @@ public class CompanyParser {
             infoJson.setCompaniesParsed(isCompleted);
             infoJson.setLinksParsed(isLinksParsed);
 
-            // Записываем в файл info.json
+
             objectMapper.writeValue(new File(INFO_FILE), infoJson);
         } catch (IOException e) {
             System.err.println("Error saving progress: " + e.getMessage());
         }
     }
 
-    /**
-     * Завершение парсинга, остановка драйвера.
-     */
+
     public void stopParsing() {
         isParsing.set(false);
         if (webDriver != null) {
@@ -484,9 +464,7 @@ public class CompanyParser {
         }
     }
 
-    /**
-     * "Только действующие" чекбокс (id="input-9").
-     */
+
     private void checkAndToggleCheckbox() throws InterruptedException {
         WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(WAIT_TIMEOUT_SECONDS));
         Thread.sleep(2000);
@@ -494,7 +472,7 @@ public class CompanyParser {
         WebElement checkbox = wait.until(
                 ExpectedConditions.presenceOfElementLocated(By.id("input-9"))
         );
-        checkForServerErrorAndRefreshIfNeeded();
+
 
         String isChecked = checkbox.getAttribute("aria-checked");
         if ("false".equals(isChecked)) {
@@ -504,14 +482,11 @@ public class CompanyParser {
                     )
             );
             label.click();
-            checkForServerErrorAndRefreshIfNeeded();
+
         }
     }
 
-    /**
-     * "Участники госзакупок" чекбокс (id="input-55"), открывается при клике
-     * на xpath "/html/body/main/div[2]/div/div[1]/div/div/div/div[6]/div[7]/strong/button"
-     */
+
     private void checkAndTogglePartOfGovernmentProcurement() throws InterruptedException {
         WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(WAIT_TIMEOUT_SECONDS));
         Thread.sleep(2000);
@@ -522,12 +497,12 @@ public class CompanyParser {
                 )
         );
         governmentProcurement.click();
-        checkForServerErrorAndRefreshIfNeeded();
+
 
         WebElement checkbox = wait.until(
                 ExpectedConditions.presenceOfElementLocated(By.id("input-55"))
         );
-        checkForServerErrorAndRefreshIfNeeded();
+
 
         String isChecked = checkbox.getAttribute("aria-checked");
         if ("false".equals(isChecked)) {
@@ -537,38 +512,7 @@ public class CompanyParser {
                     )
             );
             label.click();
-            checkForServerErrorAndRefreshIfNeeded();
-        }
-    }
 
-    /**
-     * Проверяем, не появился ли на странице текст "500 Internal Server Error".
-     * Если появился, несколько раз перезагружаем страницу, пока ошибка не пропадёт.
-     */
-    private void checkForServerErrorAndRefreshIfNeeded() throws InterruptedException {
-        final int MAX_REFRESH_ATTEMPTS = 5;
-        int attempt = 0;
-
-        while (attempt < MAX_REFRESH_ATTEMPTS && isParsing.get()) {
-            // Ищем элемент <pre>, который содержит "500 Internal Server Error"
-            List<WebElement> errorElements = webDriver.findElements(
-                    By.xpath("//pre[contains(text(), '500 Internal Server Error')]")
-            );
-            if (errorElements.isEmpty()) {
-                // Если нет — выходим
-                return;
-            }
-
-            // Если элемент найден — делаем refresh
-            System.err.println("Страница вернула 500 Internal Server Error. Перезагружаем. Попытка " + (attempt + 1));
-            Thread.sleep(500);
-            webDriver.navigate().refresh();
-            attempt++;
-        }
-
-        if (attempt >= MAX_REFRESH_ATTEMPTS) {
-            System.err.println("Не удалось избавиться от 500 Internal Server Error за "
-                    + MAX_REFRESH_ATTEMPTS + " попыток. Продолжаем...");
         }
     }
 
@@ -577,31 +521,25 @@ public class CompanyParser {
         logStatus = "Начинаем парсить сами компании...";
         System.out.println("Начинаем парсить сами компании...");
 
-        // Выберем все Company, у которых parsed = false
+
         List<Company> companiesToParse = companyRepository.findAllByParsed(false);
-        System.out.println(companiesToParse);
-        // Если репозиторий не поддерживает такой метод —
-        // нужно создать запрос вручную или обойтись findAll().
-        // Ниже предполагается, что метод findAllByParsedFalse() существует.
+
 
         WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(WAIT_TIMEOUT_SECONDS));
 
         for (Company c : companiesToParse) {
             if (!isParsing.get()) {
-                // если парсер остановлен, прекращаем
+
                 break;
             }
             try {
                 System.out.println("Открываем ссылку для парсинга: " + c.getUrl());
                 webDriver.get(c.getUrl());
-                checkForServerErrorAndRefreshIfNeeded();
 
-                // Ждём, пока страница прогрузится (условно)
+
                 wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("body")));
 
-                // Здесь ВАША логика сбора информации (stub):
-                // parseSingleCompanyPage(); // Сбор нужных данных
-                // Пример заглушки:
+
                 Thread.sleep((long) (parsingDelay * 1000));
                 System.out.println("Собрали информацию по " + c.getUrl());
                 Company parsedCompany = parseCompanyInfo(c);
@@ -615,44 +553,34 @@ public class CompanyParser {
                             System.err.println("Ошибка сохранения: дубликат компании " + c.getUrl());
                             companyRepository.delete(c);
                         } else {
-                            throw dbException; // если ошибка другая, выбрасываем
+                            throw dbException;
                         }
                     }
                 }
                 logStatus = "спарсена компания: " + c.getId();
             } catch (Exception e) {
-                System.err.println("-----------------Ошибка при парсинге компании-------------"  + "\n" + c + "\n" + "---------------------------------------------" + "\n" + " -------------ошибка--------- " + "\n" +  e.getMessage() + "\n" + " -------------путь--------- " + "\n" +  e.getStackTrace()  + "\n" + "------------------------------------------------------------------------");
-
+                System.err.println("-----------------Ошибка при парсинге компании-------------" + "\n" + c + "\n" + "---------------------------------------------" + "\n" + " -------------ошибка--------- " + "\n" + e.getMessage() + "\n" + " -------------путь--------- " + "\n" + e.getStackTrace() + "\n" + "------------------------------------------------------------------------");
             }
         }
-
-        // Проверим, все ли ссылки теперь parsed
         boolean allDone = companyRepository.findAllByParsed(false).isEmpty();
         if (allDone) {
-            // Успешно прошли по всем компаниям
             companiesParsed = true;
             logStatus = "Парсинг закончен";
             System.out.println("Все ссылки распарсены, компанииParsed=true");
         } else {
-            // Прервались до конца
             companiesParsed = false;
             parseAllCompanyLinks();
             logStatus = "оишбка,не все ссылки обработаны, продолжаем....";
             System.out.println("Парсер остановился, но не все ссылки обработаны");
         }
-
-        // Сохраним финальное состояние
         if (rememberParsingPosition) {
             saveProgress(1L, companiesParsed, linksOfCompaniesParsed);
         }
     }
 
-
-    //парсинг одной компании
-
     public Company parseCompanyInfo(Company company) {
         try {
-            // Название организации и тип
+
             String orgName = getTextIfPresent(By.cssSelector("h1#cn"));
             if (orgName != null) {
                 company.setOrganizationName(orgName);
@@ -664,7 +592,6 @@ public class CompanyParser {
         } catch (Exception e) {
             System.err.println("Ошибка при парсинге названия компании: " + e.getMessage());
         }
-        //рубрика
 
 
         try {
@@ -672,21 +599,19 @@ public class CompanyParser {
                     "//div[contains(text(),'Вид деятельности')]/following-sibling::div/a"
             ));
             company.setRubric(industryElement.getText());
-        } catch (NoSuchElementException e) {
+        } catch (Exception e) {
         }
 
 
-
-        // Учредитель и должность
         try {
             WebElement infoBlock = webDriver.findElement(By.cssSelector("div.d-flex div.flex-grow-1.ms-3"));
             company.setFounderPosition(infoBlock.findElement(By.cssSelector("div.fw-700")).getText().trim());
             company.setFounder(infoBlock.findElement(By.cssSelector("a.link")).getText().trim());
-        } catch (NoSuchElementException e) {
+        } catch (Exception e) {
             System.err.println("Учредитель или должность не найдены: " + e.getMessage());
         }
 
-        // ИНН, ОГРН, ОКАТО
+
         try {
             company.setInn(getTextIfPresent(By.cssSelector("strong#copy-inn")));
             company.setOgrn(getTextIfPresent(By.cssSelector("strong#copy-ogrn")));
@@ -695,15 +620,15 @@ public class CompanyParser {
             System.err.println("Ошибка при парсинге ИНН/ОГРН/ОКАТО: " + e.getMessage());
         }
 
-        // Уставный капитал
+
         try {
             String capital = findTextByLabel("Уставный капитал");
-            company.setAuthorizedCapital(capital == null ? "0" : capital );
+            company.setAuthorizedCapital(capital == null ? "0" : capital);
         } catch (Exception e) {
             System.err.println("Ошибка при парсинге уставного капитала: " + e.getMessage());
         }
 
-        // Юридический адрес и город
+
         try {
             String address = getTextIfPresent(By.cssSelector("span#copy-address"));
             if (address != null) {
@@ -714,7 +639,7 @@ public class CompanyParser {
             System.err.println("Ошибка при парсинге юридического адреса: " + e.getMessage());
         }
 
-        // Выручка, прибыль, капитал
+
         try {
             WebElement accountingBlock = webDriver.findElement(By.cssSelector("div#accounting-huge"));
             List<WebElement> columns = accountingBlock.findElements(By.cssSelector("div.col-12.col-md-4"));
@@ -724,11 +649,11 @@ public class CompanyParser {
                 company.setProfit(cleanUpPercent(columns.get(1).findElement(By.cssSelector("div.text-huge")).getText().trim()));
                 company.setCapital(cleanUpPercent(columns.get(2).findElement(By.cssSelector("div.text-huge")).getText().trim()));
             }
-        } catch (NoSuchElementException e) {
+        } catch (Exception e) {
             System.err.println("Ошибка при парсинге финансовых данных: " + e.getMessage());
         }
 
-        // Госзакупки (заказчик и поставщик)
+
         try {
             WebElement contractsSection = webDriver.findElement(By.cssSelector("section#contracts"));
             WebElement row = contractsSection.findElement(By.cssSelector("div.row.gy-3.gx-4.mb-4"));
@@ -738,11 +663,11 @@ public class CompanyParser {
 
             company.setGovernmentPurchasesCustomer(customerBlock.getText().trim());
             company.setGovernmentPurchasesSupplier(supplierBlock.getText().trim());
-        } catch (NoSuchElementException e) {
+        } catch (Exception e) {
             System.err.println("Ошибка при парсинге госзакупок: " + e.getMessage());
         }
 
-        // Налоги и страховые взносы
+
         try {
             WebElement taxesSection = webDriver.findElement(By.cssSelector("section#taxes"));
             WebElement row = taxesSection.findElement(By.cssSelector("div.row.gy-3.gx-4"));
@@ -752,35 +677,35 @@ public class CompanyParser {
 
             company.setTaxes(cleanUpPercent(taxesBlock.getText().trim()));
             company.setInsuranceContributions(cleanUpPercent(insuranceBlock.getText().trim()));
-        } catch (NoSuchElementException e) {
+        } catch (Exception e) {
             System.err.println("Ошибка при парсинге налогов или страховых взносов: " + e.getMessage());
         }
 
-        // Флаг активности
+
         company.setActiveCompany(true);
 
-        // Дата регистрации
+
         try {
             company.setRegistrationDate(findTextByLabel("Дата регистрации"));
         } catch (Exception e) {
             System.err.println("Ошибка при парсинге даты регистрации: " + e.getMessage());
         }
 
-        // Количество работников
+
         try {
             company.setNumberOfEmployees(parseNumberOfEmployees());
         } catch (Exception e) {
             System.err.println("Ошибка при парсинге количества работников: " + e.getMessage());
         }
 
-        // ОКВЭД
+
         try {
             company.setOkvedCode(parseOkvedFromActivity());
         } catch (Exception e) {
             System.err.println("Ошибка при парсинге ОКВЭД: " + e.getMessage());
         }
 
-        // Телефоны, email, сайт
+
         try {
             company.setPhones(parsePhones());
         } catch (Exception e) {
@@ -817,8 +742,8 @@ public class CompanyParser {
 
     private String findTextByLabel(String labelText) {
         try {
-            // Ищем div, у которого class="fw-700" и содержится text() с labelText,
-            // а затем берем его следующий sibling <div>.
+
+
             WebElement valueElement = webDriver.findElement(By.xpath(
                     "//div[@class='fw-700' and contains(text(),'" + labelText + "')]/following-sibling::div"
             ));
@@ -829,16 +754,29 @@ public class CompanyParser {
     }
 
     private String parseCityFromAddress(String address) {
-        if (address == null) return null;
-        String lower = address.toLowerCase();
-        int idx = lower.indexOf("г. ");
-        if (idx >= 0) {
-            int start = idx + 3;
-            int end = lower.indexOf(",", start);
-            if (end == -1) end = address.length();
-            return address.substring(start, end).trim();
+        // Регулярное выражение для поиска названий городов, избегая административных округов и районов
+        String regex = "(?<=,\\s|^)(?:г\\.?|город|г\\.о\\.|г\\. п\\.|пгт|п\\. |поселок|с\\. |село|деревня|ст-ца|мкр-н|р-н|район|аул|снт|рп|гп|х|д)\\s*([А-ЯЁа-яё\\-\\s]+?)(?=,|$)";
+
+        Pattern pattern = Pattern.compile(regex);
+        Matcher matcher = pattern.matcher(address);
+
+        String lastMatch = null;
+        while (matcher.find()) {
+            lastMatch = matcher.group(1).trim();
         }
-        return null;
+
+        // Проверяем, что найденный населенный пункт - не административный округ
+        if (lastMatch != null &&
+                !lastMatch.toLowerCase().contains("муниципальный округ") &&
+                !lastMatch.toLowerCase().contains("район") &&
+                !lastMatch.toLowerCase().contains("м. р-н") &&
+                !lastMatch.toLowerCase().contains("р-н") &&
+                !lastMatch.toLowerCase().contains("м.о.") &&
+                !lastMatch.toLowerCase().contains("м. о.")) {
+            return lastMatch;
+        }
+
+        return "";
     }
 
     private Integer parseNumberOfEmployees() {
@@ -850,8 +788,8 @@ public class CompanyParser {
     private String parseOkvedFromActivity() {
         try {
             WebElement activityBlock = webDriver.findElement(By.id("activity"));
-            return  activityBlock.findElement(By.tagName("tbody")).findElement(By.tagName("tr")).findElement(By.tagName("td")).getText();
-        }catch (NoSuchElementException e) {
+            return activityBlock.findElement(By.tagName("tbody")).findElement(By.tagName("tr")).findElement(By.tagName("td")).getText();
+        } catch (NoSuchElementException e) {
             return null;
         }
     }
@@ -859,18 +797,18 @@ public class CompanyParser {
 
     private String parsePhones() {
         try {
-            // Ищем все элементы <a> где href начинается с "tel:"
-            // Они могут быть в колонке "Телефоны"
+
+
             WebElement phoneBlock = webDriver.findElement(By.xpath(
                     "//strong[@class='fw-700 d-block mb-1' and contains(text(),'Телефоны')]/parent::div"
             ));
-            // Внутри phoneBlock ищем все <a href="tel:...">
+
             var phoneLinks = phoneBlock.findElements(By.cssSelector("a[href^='tel:']"));
 
             if (phoneLinks.isEmpty()) {
                 return null;
             }
-            // Собираем
+
             StringBuilder sb = new StringBuilder();
             for (WebElement link : phoneLinks) {
                 if (sb.length() > 0) sb.append(", ");
@@ -882,40 +820,39 @@ public class CompanyParser {
         }
     }
 
-    /**
-     * Ищем Email (в блоке "Электронная почта").
-     */
+
     private String parseEmailIfPresent() {
         try {
-            // Ищем элемент <strong> с текстом "Электронная почта"
+
             WebElement emailHeader = webDriver.findElement(By.xpath("//strong[contains(text(),'Электронная почта')]"));
 
-            // Ищем все ссылки <a>, которые находятся сразу после заголовка
+
             List<WebElement> emailLinks = emailHeader.findElements(By.xpath("following-sibling::a"));
 
-            // Извлекаем текст из найденных ссылок и объединяем через запятую
+
             return emailLinks.stream()
                     .map(WebElement::getText)
                     .map(String::trim)
-                    .filter(email -> !email.isEmpty() && email.contains("@")) // Фильтруем пустые строки
+                    .filter(email -> !email.isEmpty() && email.contains("@"))
                     .collect(Collectors.joining(", "));
         } catch (NoSuchElementException e) {
             return null;
         }
     }
+
     private String parseWebsiteIfPresent() {
         try {
-            // Ищем заголовок "Веб-сайт"
+
             WebElement websiteHeader = webDriver.findElement(By.xpath("//strong[contains(text(),'Веб-сайт')]"));
 
-            // Ищем все ссылки <a>, которые находятся сразу после заголовка
+
             List<WebElement> websiteLinks = websiteHeader.findElements(By.xpath("following-sibling::a"));
 
-            // Извлекаем текст из найденных ссылок и объединяем через запятую
+
             return websiteLinks.stream()
                     .map(WebElement::getText)
                     .map(String::trim)
-                    .filter(website -> !website.isEmpty()) // Фильтруем пустые строки
+                    .filter(website -> !website.isEmpty())
                     .collect(Collectors.joining(", "));
         } catch (NoSuchElementException e) {
             return null;

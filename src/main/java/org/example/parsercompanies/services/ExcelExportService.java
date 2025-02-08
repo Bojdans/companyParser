@@ -43,7 +43,7 @@ public class ExcelExportService {
         Workbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("Companies");
 
-        // Создание заголовков
+        
         Row headerRow = sheet.createRow(0);
         String[] headers = {"id","Рубрика", "Имя организации", "Руководитель", "Должность", "ИНН", "ОГРН", "ОКАТО",
                 "Уставный капитал", "Юрид. адрес", "Город", "телефоны", "Email", "Сайт", "Выручка за год", "Прибыль за год",
@@ -56,7 +56,7 @@ public class ExcelExportService {
             cell.setCellStyle(createHeaderCellStyle(workbook));
         }
 
-        // Заполнение данными
+        
         int rowNum = 1;
         for (Company company : companies) {
             Row row = sheet.createRow(rowNum++);
@@ -87,18 +87,18 @@ public class ExcelExportService {
             row.createCell(24).setCellValue(company.getOkvedCode());
         }
 
-        // Авторазмер колонок
+        
         for (int i = 0; i < headers.length; i++) {
             sheet.autoSizeColumn(i);
         }
 
-        // Убедитесь, что директория существует
+        
         File directory = new File(exportDirectory);
         if (!directory.exists()) {
             directory.mkdirs();
         }
 
-        // Создание уникального имени файла
+        
         Path filePath = Paths.get(exportDirectory, "companies.xlsx");
         int counter = 1;
         while (filePath.toFile().exists()) {
@@ -106,7 +106,7 @@ public class ExcelExportService {
             counter++;
         }
 
-        // Сохранение файла
+        
         try (FileOutputStream fileOut = new FileOutputStream(filePath.toFile())) {
             workbook.write(fileOut);
         }
@@ -115,7 +115,7 @@ public class ExcelExportService {
 
         System.out.println("Data exported to: " + filePath);
 
-        // Автоматическое открытие файла, если разрешено
+        
         try {
             String command = "cmd /c start \"\" \"" + filePath+ "\"";
             Runtime.getRuntime().exec(command);

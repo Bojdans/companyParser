@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class PageViewController {
     @GetMapping("/page")
     public String getPage() {
-        return "index.html"; // Указываем имя файла без .html
+        return "index.html"; 
     }
 }
 
