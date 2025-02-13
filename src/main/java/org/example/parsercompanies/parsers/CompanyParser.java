@@ -20,7 +20,6 @@ import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.*;
@@ -171,12 +170,11 @@ public class CompanyParser {
 
         try {
 
-            webDriver.get("https://checko.ru/search/advanced");
+            webDriver.get("https://companium.ru/advanced/search");
 
 
             if (!isLinksOfCompaniesParsed()) {
                 applyFilters();
-
                 extractAndSaveCompanyLinks();
             }
 
@@ -221,7 +219,7 @@ public class CompanyParser {
 
         if (!isParsing.get()) return;
         if (partOfGovernmentProcurement) {
-            System.out.println("Применяем чекбокс 1");
+            System.out.println("Применяем чекбокс 2");
             checkAndTogglePartOfGovernmentProcurement();
 
         }
@@ -232,7 +230,7 @@ public class CompanyParser {
         Thread.sleep(2000);
 
         WebElement categoriesButton = wait.until(
-                ExpectedConditions.elementToBeClickable(By.id("input-11"))
+                ExpectedConditions.elementToBeClickable(By.id("input-9"))
         );
         categoriesButton.click();
 
@@ -303,7 +301,7 @@ public class CompanyParser {
         Thread.sleep(2000);
 
 
-        wait.until(ExpectedConditions.elementToBeClickable(By.id("input-13"))).click();
+        wait.until(ExpectedConditions.elementToBeClickable(By.id("input-11"))).click();
 
 
         Set<String> locations = new HashSet<>();
@@ -358,7 +356,7 @@ public class CompanyParser {
     }
 
 
-    public void extractAndSaveCompanyLinks() {
+    public void extractAndSaveCompanyLinks() throws InterruptedException, IOException {
         if (!isParsing.get()) return;
         logStatus = "Переходим к парсингу...";
         System.out.println("Переходим к парсингу...");
@@ -377,7 +375,7 @@ public class CompanyParser {
 
         while (isParsing.get() && currentPage <= pagesDeep) {
             try {
-                webDriver.get("https://checko.ru/search/advanced?page=" + currentPage);
+                webDriver.get("https://companium.ru/advanced/search?page=" + currentPage);
 
                 wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("main")));
 
@@ -400,7 +398,7 @@ public class CompanyParser {
                 List<String> companyLinks = new ArrayList<>();
                 for (WebElement row : rows) {
                     try {
-                        WebElement linkElement = row.findElement(By.cssSelector("a.link"));
+                        WebElement linkElement = row.findElement(By.cssSelector("a"));
                         String link = linkElement.getAttribute("href");
                         companyLinks.add(link);
                         System.out.println("Extracted link: " + link);
@@ -420,9 +418,17 @@ public class CompanyParser {
 
                 Thread.sleep((long) (parsingDelay * 1000));
 
-            } catch (Exception e) {
+            }
+//            catch (WebDriverException e) {
+//                if (e.getMessage() != null &&
+//                        e.getMessage().contains("Session ID is null. Using WebDriver after calling quit()?")) {
+//                    isParsing.set(false);
+//                    startParsing();
+//                }
+//            }
+            catch (Exception e) {
+                logStatus = "Ошибка при парсинге страницы: " + currentPage;
                 System.err.println("Error processing currentPage " + currentPage + ": " + e.getMessage());
-                break;
             }
         }
 
@@ -458,7 +464,6 @@ public class CompanyParser {
         isParsing.set(false);
         if (webDriver != null) {
             webDriver.quit();
-            logStatus = "Парсер выключен";
             logStatus = "Ничего не делаем";
             System.out.println("остановка парсинга");
         }
@@ -470,7 +475,7 @@ public class CompanyParser {
         Thread.sleep(2000);
 
         WebElement checkbox = wait.until(
-                ExpectedConditions.presenceOfElementLocated(By.id("input-9"))
+                ExpectedConditions.presenceOfElementLocated(By.id("input-13"))
         );
 
 
@@ -478,7 +483,7 @@ public class CompanyParser {
         if ("false".equals(isChecked)) {
             WebElement label = wait.until(
                     ExpectedConditions.presenceOfElementLocated(
-                            By.cssSelector("label[for=\"input-9\"]")
+                            By.cssSelector("label[for=\"input-13\"]")
                     )
             );
             label.click();
@@ -516,7 +521,7 @@ public class CompanyParser {
         }
     }
 
-    private void parseAllCompanyLinks() {
+    private void parseAllCompanyLinks() throws InterruptedException, IOException {
         if (!isParsing.get()) return;
         logStatus = "Начинаем парсить сами компании...";
         System.out.println("Начинаем парсить сами компании...");
@@ -529,7 +534,7 @@ public class CompanyParser {
 
         for (Company c : companiesToParse) {
             if (!isParsing.get()) {
-
+                logStatus = "Ничего не делаем";
                 break;
             }
             try {
@@ -558,8 +563,17 @@ public class CompanyParser {
                     }
                 }
                 logStatus = "спарсена компания: " + c.getId();
-            } catch (Exception e) {
-                System.err.println("-----------------Ошибка при парсинге компании-------------" + "\n" + c + "\n" + "---------------------------------------------" + "\n" + " -------------ошибка--------- " + "\n" + e.getMessage() + "\n" + " -------------путь--------- " + "\n" + e.getStackTrace() + "\n" + "------------------------------------------------------------------------");
+            }
+//            catch (WebDriverException e) {
+//                if (e.getMessage() != null &&
+//                        e.getMessage().contains("Session ID is null. Using WebDriver after calling quit()?")) {
+//                    System.err.println("Драйвер не активен, требуется пересоздание: ");
+//                    isParsing.set(false);
+//                    startParsing();
+//                }
+//            }
+            catch (InterruptedException e) {
+                throw new RuntimeException(e);
             }
         }
         boolean allDone = companyRepository.findAllByParsed(false).isEmpty();
@@ -570,7 +584,7 @@ public class CompanyParser {
         } else {
             companiesParsed = false;
             parseAllCompanyLinks();
-            logStatus = "оишбка,не все ссылки обработаны, продолжаем....";
+            logStatus = "не все ссылки обработаны";
             System.out.println("Парсер остановился, но не все ссылки обработаны");
         }
         if (rememberParsingPosition) {
@@ -580,8 +594,7 @@ public class CompanyParser {
 
     public Company parseCompanyInfo(Company company) {
         try {
-
-            String orgName = getTextIfPresent(By.cssSelector("h1#cn"));
+            String orgName = getTextIfPresent(By.cssSelector("#top > div > h1"));
             if (orgName != null) {
                 company.setOrganizationName(orgName);
                 int quoteIndex = orgName.indexOf("\"");
@@ -590,42 +603,38 @@ public class CompanyParser {
                 }
             }
         } catch (Exception e) {
-            System.err.println("Ошибка при парсинге названия компании: " + e.getMessage());
+            System.err.println("Ошибка при парсинге названия компании: ");
         }
 
 
         try {
-            WebElement industryElement = webDriver.findElement(By.xpath(
-                    "//div[contains(text(),'Вид деятельности')]/following-sibling::div/a"
-            ));
-            company.setRubric(industryElement.getText());
+            company.setRubric(getFirstActivity());
         } catch (Exception e) {
+            System.err.println("Ошибка при парсинге рода деятельности: ");
         }
 
-
         try {
-            WebElement infoBlock = webDriver.findElement(By.cssSelector("div.d-flex div.flex-grow-1.ms-3"));
-            company.setFounderPosition(infoBlock.findElement(By.cssSelector("div.fw-700")).getText().trim());
-            company.setFounder(infoBlock.findElement(By.cssSelector("a.link")).getText().trim());
+            company.setFounderPosition(getDirectorPosition());
+            company.setFounder(getDirectorName());
         } catch (Exception e) {
-            System.err.println("Учредитель или должность не найдены: " + e.getMessage());
+            System.err.println("Учредитель или должность не найдены: ");
         }
 
 
         try {
             company.setInn(getTextIfPresent(By.cssSelector("strong#copy-inn")));
             company.setOgrn(getTextIfPresent(By.cssSelector("strong#copy-ogrn")));
-            company.setOkatoCode(getTextIfPresent(By.cssSelector("span#copy-okato")));
+            company.setOkatoCode(getTextIfPresent(By.cssSelector("span#copy-okato-details")));
         } catch (Exception e) {
-            System.err.println("Ошибка при парсинге ИНН/ОГРН/ОКАТО: " + e.getMessage());
+            System.err.println("Ошибка при парсинге ИНН/ОГРН/ОКАТО: ");
         }
 
 
         try {
             String capital = findTextByLabel("Уставный капитал");
-            company.setAuthorizedCapital(capital == null ? "0" : capital);
+            company.setAuthorizedCapital(capital == null ? "0 руб." : capital.substring(capital.indexOf("=") + 2).trim());
         } catch (Exception e) {
-            System.err.println("Ошибка при парсинге уставного капитала: " + e.getMessage());
+            System.err.println("Ошибка при парсинге уставного капитала: ");
         }
 
 
@@ -636,49 +645,31 @@ public class CompanyParser {
                 company.setCity(parseCityFromAddress(address));
             }
         } catch (Exception e) {
-            System.err.println("Ошибка при парсинге юридического адреса: " + e.getMessage());
+            System.err.println("Ошибка при парсинге юридического адреса: ");
         }
 
 
         try {
-            WebElement accountingBlock = webDriver.findElement(By.cssSelector("div#accounting-huge"));
-            List<WebElement> columns = accountingBlock.findElements(By.cssSelector("div.col-12.col-md-4"));
-
-            if (columns.size() >= 3) {
-                company.setRevenue(cleanUpPercent(columns.get(0).findElement(By.cssSelector("div.text-huge")).getText().trim()));
-                company.setProfit(cleanUpPercent(columns.get(1).findElement(By.cssSelector("div.text-huge")).getText().trim()));
-                company.setCapital(cleanUpPercent(columns.get(2).findElement(By.cssSelector("div.text-huge")).getText().trim()));
-            }
+            company.setRevenue(cleanUpPercent(getRevenue()));
+            company.setProfit(cleanUpPercent(getNetProfit()));
+            company.setCapital(cleanUpPercent(getCapital()));
         } catch (Exception e) {
-            System.err.println("Ошибка при парсинге финансовых данных: " + e.getMessage());
+            System.err.println("Ошибка при парсинге финансовых данных: ");
         }
 
 
         try {
-            WebElement contractsSection = webDriver.findElement(By.cssSelector("section#contracts"));
-            WebElement row = contractsSection.findElement(By.cssSelector("div.row.gy-3.gx-4.mb-4"));
-
-            WebElement customerBlock = row.findElement(By.cssSelector("div.col-12.col-md-6.col-xxl-4 div.text-huge"));
-            WebElement supplierBlock = row.findElement(By.cssSelector("div.col-12.col-md-6.col-xxl-8 div.text-huge"));
-
-            company.setGovernmentPurchasesCustomer(customerBlock.getText().trim());
-            company.setGovernmentPurchasesSupplier(supplierBlock.getText().trim());
+            company.setGovernmentPurchasesCustomer(getCustomerContractsSum());
+            company.setGovernmentPurchasesSupplier(getSupplierContractsSum());
         } catch (Exception e) {
-            System.err.println("Ошибка при парсинге госзакупок: " + e.getMessage());
+            System.err.println("Ошибка при парсинге госзакупок: ");
         }
 
-
         try {
-            WebElement taxesSection = webDriver.findElement(By.cssSelector("section#taxes"));
-            WebElement row = taxesSection.findElement(By.cssSelector("div.row.gy-3.gx-4"));
-
-            WebElement taxesBlock = row.findElement(By.cssSelector("div.col-12.col-md-6.col-xxl-4 div.text-huge.mb-1"));
-            WebElement insuranceBlock = row.findElement(By.cssSelector("div.col-12.col-md-6.col-xxl-8 div.text-huge.mb-1"));
-
-            company.setTaxes(cleanUpPercent(taxesBlock.getText().trim()));
-            company.setInsuranceContributions(cleanUpPercent(insuranceBlock.getText().trim()));
+            company.setTaxes(getTaxesSum());
+            company.setInsuranceContributions(getInsuranceContributionsSum());
         } catch (Exception e) {
-            System.err.println("Ошибка при парсинге налогов или страховых взносов: " + e.getMessage());
+            System.err.println("Ошибка при парсинге налогов или страховых взносов: ");
         }
 
 
@@ -688,40 +679,40 @@ public class CompanyParser {
         try {
             company.setRegistrationDate(findTextByLabel("Дата регистрации"));
         } catch (Exception e) {
-            System.err.println("Ошибка при парсинге даты регистрации: " + e.getMessage());
+            System.err.println("Ошибка при парсинге даты регистрации: ");
         }
 
 
         try {
             company.setNumberOfEmployees(parseNumberOfEmployees());
         } catch (Exception e) {
-            System.err.println("Ошибка при парсинге количества работников: " + e.getMessage());
+            System.err.println("Ошибка при парсинге количества работников: ");
         }
 
 
         try {
             company.setOkvedCode(parseOkvedFromActivity());
         } catch (Exception e) {
-            System.err.println("Ошибка при парсинге ОКВЭД: " + e.getMessage());
+            System.err.println("Ошибка при парсинге ОКВЭД: ");
         }
 
 
         try {
             company.setPhones(parsePhones());
         } catch (Exception e) {
-            System.err.println("Ошибка при парсинге телефонов: " + e.getMessage());
+            System.err.println("Ошибка при парсинге телефонов: ");
         }
 
         try {
             company.setEmail(parseEmailIfPresent());
         } catch (Exception e) {
-            System.err.println("Ошибка при парсинге email: " + e.getMessage());
+            System.err.println("Ошибка при парсинге email: ");
         }
 
         try {
             company.setWebsite(parseWebsiteIfPresent());
         } catch (Exception e) {
-            System.err.println("Ошибка при парсинге сайта: " + e.getMessage());
+            System.err.println("Ошибка при парсинге сайта: ");
         }
 
         company.setParsed(true);
@@ -742,10 +733,8 @@ public class CompanyParser {
 
     private String findTextByLabel(String labelText) {
         try {
-
-
             WebElement valueElement = webDriver.findElement(By.xpath(
-                    "//div[@class='fw-700' and contains(text(),'" + labelText + "')]/following-sibling::div"
+                    "//div[@class='fw-bold' and contains(text(),'" + labelText + "')]/following-sibling::div"
             ));
             return valueElement.getText().trim();
         } catch (NoSuchElementException e) {
@@ -754,7 +743,7 @@ public class CompanyParser {
     }
 
     private String parseCityFromAddress(String address) {
-        // Регулярное выражение для поиска названий городов, избегая административных округов и районов
+
         String regex = "(?<=,\\s|^)(?:г\\.?|город|г\\.о\\.|г\\. п\\.|пгт|п\\. |поселок|с\\. |село|деревня|ст-ца|мкр-н|р-н|район|аул|снт|рп|гп|х|д)\\s*([А-ЯЁа-яё\\-\\s]+?)(?=,|$)";
 
         Pattern pattern = Pattern.compile(regex);
@@ -765,7 +754,7 @@ public class CompanyParser {
             lastMatch = matcher.group(1).trim();
         }
 
-        // Проверяем, что найденный населенный пункт - не административный округ
+
         if (lastMatch != null &&
                 !lastMatch.toLowerCase().contains("муниципальный округ") &&
                 !lastMatch.toLowerCase().contains("район") &&
@@ -779,31 +768,61 @@ public class CompanyParser {
         return "";
     }
 
-    private Integer parseNumberOfEmployees() {
-        String digits = webDriver.findElement(By.xpath("/html/body/main/div[2]/div/article/div/div[4]/div[2]/div[3]/div[2]")).getText().replaceAll("\\D+.*", "").replaceAll("\\D-.*", "");
-        if (digits.isEmpty()) return 0;
-        return Integer.valueOf(digits);
+    public int parseNumberOfEmployees() {
+        try {
+            WebElement section = webDriver.findElement(By.xpath("//h2[@id='staff']/ancestor::section"));
+
+            WebElement employeesElement = section.findElement(By.xpath(".//div[@class='money-huge']/a"));
+
+            return Integer.parseInt(employeesElement.getText().trim().replaceAll("[^0-9]", ""));
+        } catch (NoSuchElementException e) {
+            return 0;
+        }
     }
 
     private String parseOkvedFromActivity() {
         try {
-            WebElement activityBlock = webDriver.findElement(By.id("activity"));
-            return activityBlock.findElement(By.tagName("tbody")).findElement(By.tagName("tr")).findElement(By.tagName("td")).getText();
-        } catch (NoSuchElementException e) {
+
+            WebElement header = webDriver.findElement(By.id("activity"));
+
+
+            WebElement section = header.findElement(By.xpath("./ancestor::section"));
+
+
+            WebElement firstCodeElement = section.findElement(By.cssSelector("table tbody tr td"));
+
+
+            return firstCodeElement.getText().trim();
+        } catch (Exception e) {
+            System.err.println("Ошибка при поиске кода ОКВЭД: " + e.getMessage());
             return null;
         }
     }
 
+    public String getFirstActivity() {
+        try {
+            WebElement header = webDriver.findElement(By.id("activity"));
+
+            WebElement section = header.findElement(By.xpath("./ancestor::section"));
+
+            WebElement firstRow = section.findElement(By.cssSelector("table tbody tr"));
+
+            WebElement activityElement = firstRow.findElement(By.cssSelector("td:nth-child(2)"));
+
+            return activityElement.getText().replace("Основной", "").trim();
+        } catch (Exception e) {
+            System.err.println("Ошибка при поиске вида деятельности: " + e.getMessage());
+            return "";
+        }
+    }
 
     private String parsePhones() {
         try {
+            WebElement section = webDriver.findElement(By.xpath("//h2[@id='contacts']/ancestor::section"));
 
+            WebElement phoneBlock = section.findElement(By.xpath(".//strong[contains(text(),'Телефоны')]/following-sibling::a[contains(@href, 'tel:')]"));
 
-            WebElement phoneBlock = webDriver.findElement(By.xpath(
-                    "//strong[@class='fw-700 d-block mb-1' and contains(text(),'Телефоны')]/parent::div"
-            ));
-
-            var phoneLinks = phoneBlock.findElements(By.cssSelector("a[href^='tel:']"));
+            List<WebElement> phoneLinks = phoneBlock.findElements(By.xpath("./ancestor::div[contains(@class, 'col-12')]/a[contains(@href, 'tel:')]"));
 
             if (phoneLinks.isEmpty()) {
                 return null;
@@ -819,7 +838,6 @@ public class CompanyParser {
             return null;
         }
     }
-
 
     private String parseEmailIfPresent() {
         try {
@@ -856,6 +874,111 @@ public class CompanyParser {
                     .collect(Collectors.joining(", "));
         } catch (NoSuchElementException e) {
             return null;
+        }
+    }
+
+    public String getDirectorPosition() {
+        try {
+            WebElement section = webDriver.findElement(By.xpath("//h2[@id='management']/ancestor::section"));
+
+            WebElement positionElement = section.findElement(By.xpath(".//strong[contains(@class, 'fw-bold')]"));
+
+            return positionElement.getText().trim();
+        } catch (NoSuchElementException e) {
+            return null;
+        }
+    }
+
+    public String getDirectorName() {
+        try {
+            WebElement section = webDriver.findElement(By.xpath("//h2[@id='management']/ancestor::section"));
+
+            WebElement nameElement = section.findElement(By.xpath(".//a[contains(@href, '/people/inn/')]"));
+
+            return nameElement.getText().trim();
+        } catch (NoSuchElementException e) {
+            return null;
+        }
+    }
+
+    public String getCapital() {
+        try {
+
+            WebElement section = webDriver.findElement(By.xpath("//h2[@id='accounting']/ancestor::section"));
+
+
+            WebElement capitalElement = section.findElement(By.xpath(".//strong[text()='Капитал']/following-sibling::div/a"));
+
+            return !capitalElement.getText().trim().isBlank() ? capitalElement.getText().trim() : "0 руб.";
+        } catch (NoSuchElementException e) {
+            return "0 руб.";
+        }
+    }
+
+    public String getNetProfit() {
+        try {
+
+            WebElement section = webDriver.findElement(By.xpath("//h2[@id='accounting']/ancestor::section"));
+
+
+            WebElement profitElement = section.findElement(By.xpath(".//strong[text()='Чистая прибыль']/following-sibling::div/a"));
+
+            return !profitElement.getText().trim().isBlank() ? profitElement.getText().trim() : "0 руб.";
+        } catch (NoSuchElementException e) {
+            return "0 руб.";
+        }
+    }
+
+    public String getRevenue() {
+        try {
+            WebElement section = webDriver.findElement(By.xpath("//h2[@id='accounting']/ancestor::section"));
+
+
+            WebElement revenueElement = section.findElement(By.xpath(".//strong[text()='Выручка']/following-sibling::div/a"));
+
+            return !revenueElement.getText().trim().isBlank() ? revenueElement.getText().trim() : "0 руб.";
+        } catch (NoSuchElementException e) {
+            return "0 руб.";
+        }
+    }
+
+    public String getSupplierContractsSum() {
+        try {
+            WebElement section = webDriver.findElement(By.xpath("//h2[@id='purchases']/ancestor::section"));
+            WebElement sumElement = section.findElement(By.xpath(".//button[@id='contracts-pill-2']/span"));
+            return sumElement.getText().trim();
+        } catch (NoSuchElementException e) {
+            return "0 руб.";
+        }
+    }
+
+    public String getCustomerContractsSum() {
+        try {
+            WebElement section = webDriver.findElement(By.xpath("//h2[@id='purchases']/ancestor::section"));
+            WebElement sumElement = section.findElement(By.xpath(".//button[@id='contracts-pill-1']/span"));
+            return sumElement.getText().trim();
+        } catch (NoSuchElementException e) {
+            return "0 руб.";
+        }
+    }
+
+    public String getTaxesSum() {
+        return extractTaxValue("Налоги");
+    }
+
+    public String getInsuranceContributionsSum() {
+        return extractTaxValue("Страховые взносы");
+    }
+
+    private String extractTaxValue(String sectionName) {
+        try {
+            WebElement taxesSection = webDriver.findElement(By.xpath("//h2[@id='taxes']/ancestor::section"));
+
+            WebElement valueElement = taxesSection.findElement(By.xpath(".//div[contains(text(),'" + sectionName + "')]/following-sibling::div[contains(@class,'money-huge')]"));
+
+            return valueElement.getText().replaceAll(".*?([\\d,\\.]+ (млн|млрд|тыс)? руб.).*", "$1").trim();
+        } catch (NoSuchElementException e) {
+            return "0 руб.";
         }
     }
 }

@@ -25,7 +25,6 @@ public class SettingsController {
         return ResponseEntity.ok(settingsService.getSettings());
     }
 
-    
     @PostMapping
     public ResponseEntity<String> updateSettings(@RequestBody Map<String, Object> newSettings) {
         try {

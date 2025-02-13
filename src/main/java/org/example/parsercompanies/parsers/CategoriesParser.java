@@ -1,8 +1,6 @@
 package org.example.parsercompanies.parsers;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
-import org.example.parsercompanies.model.InfoJson;
 import org.example.parsercompanies.model.db.Category;
 import org.example.parsercompanies.repos.CategoryRepository;
 import org.example.parsercompanies.services.SettingsService;
@@ -11,12 +9,9 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,8 +21,6 @@ public class CategoriesParser {
     private CategoryRepository categoryRepository;
     @Getter
     private boolean categoriesParsed = false;
-    private static final String INFO_FILE = Paths.get(System.getProperty("user.dir"), "cfg", "info.json").toString();
-    private final ObjectMapper objectMapper = new ObjectMapper();
     @Autowired
     public CategoriesParser(SettingsService settingsService, CategoryRepository categoryRepository) {
         this.settingsService = settingsService;
@@ -40,12 +33,10 @@ public class CategoriesParser {
 
         WebDriver driver = new ChromeDriver(settingsService.getOptions().addArguments("--headless"));
         driver.manage().window().maximize();
-        
 
-        
-        driver.get("https://checko.ru/search/advanced");
+        driver.get("https://companium.ru/advanced/search");
 
-        WebElement categoriesOpenButton = driver.findElement(By.id("input-11"));
+        WebElement categoriesOpenButton = driver.findElement(By.id("input-9"));
         categoriesOpenButton.click();
         
         WebElement treeContainer = driver.findElement(By.cssSelector(".v-treeview"));

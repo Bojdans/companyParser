@@ -82,7 +82,6 @@ public class APIController {
         companyParser.stopParsing();
         
         System.out.println("Closing application...");
-
         
         String pid = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
 

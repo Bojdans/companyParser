@@ -280,6 +280,7 @@ tr:hover {
 
 .table-container {
     flex: 1;
+    overflow-x: scroll;
 }
 
 #tab1 {

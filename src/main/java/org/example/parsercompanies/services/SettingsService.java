@@ -5,6 +5,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.Data;
 import lombok.Getter;
+import org.openqa.selenium.PageLoadStrategy;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -73,6 +74,15 @@ public class SettingsService {
 
         System.setProperty("webdriver.chrome.driver", chromeDriverPath);
         options.addArguments("--headless");
+        ChromeOptions options = new ChromeOptions();
+
+//        options.setPageLoadStrategy(PageLoadStrategy.EAGER);
+        options.setPageLoadStrategy(PageLoadStrategy.NORMAL);
+
+        options.addArguments("--disable-dev-shm-usage");
+        options.addArguments("--no-sandbox");
+        options.addArguments("--remote-debugging-port=9222");
+
         options = new ChromeOptions();
 
         String proxy = (String) settings.get("proxy");

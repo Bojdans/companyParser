@@ -281,7 +281,7 @@ function refreshSettings() {
         onlyInOperation: document.getElementById('active-only').checked,
         partOfGovernmentProcurement: document.getElementById('tenders').checked,
         pagesDeep: parseInt(document.getElementById('depth').value, 10),
-        parsingDelay: parseFloat(document.getElementById('pause').value),
+        parsingDelay: parseFloat(!document.getElementById('pause').value ? 0 : document.getElementById('pause').value),
         autoExcelOpen: document.getElementById('export').checked,
         onlyMainOKVED: document.getElementById('okved').checked,
         rememberParsingPosition: document.getElementById('remember').checked,
