@@ -43,9 +43,9 @@ public class ExcelExportService {
         Workbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("Companies");
 
-        // Создание заголовков
+        
         Row headerRow = sheet.createRow(0);
-        String[] headers = {"id", "Имя организации", "Руководитель", "Должность", "ИНН", "ОГРН", "ОКАТО",
+        String[] headers = {"id","Рубрика", "Имя организации", "Руководитель", "Должность", "ИНН", "ОГРН", "ОКАТО",
                 "Уставный капитал", "Юрид. адрес", "Город", "телефоны", "Email", "Сайт", "Выручка за год", "Прибыль за год",
                 "Капитал", "Налоги", "Страховые взносы", "Госзакупки-заказчик",
                 "Госзакупки-поставщик", "Компания действующая", "Дата регистрации", "Кол-во работников", "ОКВЭД"};
@@ -56,48 +56,49 @@ public class ExcelExportService {
             cell.setCellStyle(createHeaderCellStyle(workbook));
         }
 
-        // Заполнение данными
+        
         int rowNum = 1;
         for (Company company : companies) {
             Row row = sheet.createRow(rowNum++);
+            row.createCell(1).setCellValue(company.getRubric() != null ? company.getRubric().toString() : "");
             row.createCell(0).setCellValue(company.getId());
-            row.createCell(1).setCellValue(company.getOrganizationName());
-            row.createCell(2).setCellValue(company.getFounder());
-            row.createCell(3).setCellValue(company.getFounderPosition());
-            row.createCell(4).setCellValue(company.getInn());
-            row.createCell(5).setCellValue(company.getOgrn());
-            row.createCell(6).setCellValue(company.getOkatoCode());
-            row.createCell(7).setCellValue(company.getAuthorizedCapital() != null ? company.getAuthorizedCapital().toString() : "");
-            row.createCell(8).setCellValue(company.getLegalAddress());
-            row.createCell(9).setCellValue(company.getCity());
-            row.createCell(10).setCellValue(company.getPhones());
-            row.createCell(11).setCellValue(company.getEmail());
-            row.createCell(12).setCellValue(company.getWebsite());
-            row.createCell(13).setCellValue(company.getRevenue() != null ? company.getRevenue().toString() : "");
-            row.createCell(14).setCellValue(company.getProfit() != null ? company.getProfit().toString() : "");
-            row.createCell(15).setCellValue(company.getCapital() != null ? company.getCapital().toString() : "");
-            row.createCell(16).setCellValue(company.getTaxes() != null ? company.getTaxes().toString() : "");
-            row.createCell(17).setCellValue(company.getInsuranceContributions() != null ? company.getInsuranceContributions().toString() : "");
-            row.createCell(18).setCellValue(company.getGovernmentPurchasesCustomer());
-            row.createCell(19).setCellValue(company.getGovernmentPurchasesSupplier());
-            row.createCell(20).setCellValue(company.getActiveCompany() != null && company.getActiveCompany() ? "Да" : "Нет");
-            row.createCell(21).setCellValue(company.getRegistrationDate() != null ? company.getRegistrationDate().toString() : "");
-            row.createCell(22).setCellValue(company.getNumberOfEmployees() != null ? company.getNumberOfEmployees().toString() : "");
-            row.createCell(23).setCellValue(company.getOkvedCode());
+            row.createCell(2).setCellValue(company.getOrganizationName());
+            row.createCell(3).setCellValue(company.getFounder());
+            row.createCell(4).setCellValue(company.getFounderPosition());
+            row.createCell(5).setCellValue(company.getInn());
+            row.createCell(6).setCellValue(company.getOgrn());
+            row.createCell(7).setCellValue(company.getOkatoCode());
+            row.createCell(8).setCellValue(company.getAuthorizedCapital() != null ? company.getAuthorizedCapital().toString() : "");
+            row.createCell(9).setCellValue(company.getLegalAddress());
+            row.createCell(10).setCellValue(company.getCity());
+            row.createCell(11).setCellValue(company.getPhones());
+            row.createCell(12).setCellValue(company.getEmail());
+            row.createCell(13).setCellValue(company.getWebsite());
+            row.createCell(14).setCellValue(company.getRevenue() != null ? company.getRevenue().toString() : "");
+            row.createCell(15).setCellValue(company.getProfit() != null ? company.getProfit().toString() : "");
+            row.createCell(16).setCellValue(company.getCapital() != null ? company.getCapital().toString() : "");
+            row.createCell(17).setCellValue(company.getTaxes() != null ? company.getTaxes().toString() : "");
+            row.createCell(18).setCellValue(company.getInsuranceContributions() != null ? company.getInsuranceContributions().toString() : "");
+            row.createCell(19).setCellValue(company.getGovernmentPurchasesCustomer());
+            row.createCell(20).setCellValue(company.getGovernmentPurchasesSupplier());
+            row.createCell(21).setCellValue(company.getActiveCompany() != null && company.getActiveCompany() ? "Да" : "Нет");
+            row.createCell(22).setCellValue(company.getRegistrationDate() != null ? company.getRegistrationDate().toString() : "");
+            row.createCell(23).setCellValue(company.getNumberOfEmployees() != null ? company.getNumberOfEmployees().toString() : "");
+            row.createCell(24).setCellValue(company.getOkvedCode());
         }
 
-        // Авторазмер колонок
+        
         for (int i = 0; i < headers.length; i++) {
             sheet.autoSizeColumn(i);
         }
 
-        // Убедитесь, что директория существует
+        
         File directory = new File(exportDirectory);
         if (!directory.exists()) {
             directory.mkdirs();
         }
 
-        // Создание уникального имени файла
+        
         Path filePath = Paths.get(exportDirectory, "companies.xlsx");
         int counter = 1;
         while (filePath.toFile().exists()) {
@@ -105,7 +106,7 @@ public class ExcelExportService {
             counter++;
         }
 
-        // Сохранение файла
+        
         try (FileOutputStream fileOut = new FileOutputStream(filePath.toFile())) {
             workbook.write(fileOut);
         }
@@ -114,7 +115,7 @@ public class ExcelExportService {
 
         System.out.println("Data exported to: " + filePath);
 
-        // Автоматическое открытие файла, если разрешено
+        
         try {
             String command = "cmd /c start \"\" \"" + filePath+ "\"";
             Runtime.getRuntime().exec(command);

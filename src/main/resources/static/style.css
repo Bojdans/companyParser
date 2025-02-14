@@ -1,4 +1,4 @@
-/* Общий стиль */
+
 body {
     font-family: Arial, sans-serif;
     margin: 0;
@@ -14,7 +14,7 @@ body {
     overflow: hidden;
 }
 
-/* Верхняя панель вкладок */
+
 .tab-bar {
     display: flex;
     border-bottom: 1px solid black;
@@ -47,7 +47,7 @@ body {
     border-bottom: 1px solid white;
 }
 
-/* Содержимое вкладок */
+
 .content {
     position: relative;
     flex: 1;
@@ -61,7 +61,7 @@ body {
     flex-direction: column;
 }
 
-/* Форма и секции */
+
 .form-section {
     flex: 1;
     overflow-y: scroll;
@@ -102,7 +102,7 @@ input[type="checkbox"] {
     height: 20px;
 }
 
-/* Панель управления */
+
 .control-panel {
     display: flex;
     justify-content: center;
@@ -145,7 +145,7 @@ table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 20px;
-    table-layout: fixed; /* Устанавливаем фиксированную ширину */
+    table-layout: fixed;
 }
 
 th, td {
@@ -161,7 +161,7 @@ th, td {
 th {
     background-color: #919191;
     color: white;
-    font-size: 12px; /* Для размещения ресайзера */
+    font-size: 12px;
 }
 
 td {
@@ -205,11 +205,11 @@ tr:hover {
     right: 60px;
 }
 
-/* Инпуты в клетках */
+
 #tab2 input, #tab2 select {
-    width: 100%; /* Растягиваем на всю ширину клетки */
-    height: 100%; /* Растягиваем на всю высоту клетки */
-    box-sizing: border-box; /* Учитываем padding при расчете размеров */
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
 }
 
 #log-area-wrapper {
@@ -239,7 +239,7 @@ tr:hover {
 }
 
 
-/* Контейнер интерфейса */
+
 #interface-container {
     display: flex;
     flex-direction: row;
@@ -249,7 +249,7 @@ tr:hover {
     border: 1px solid #ccc;
 }
 
-/* Левая панель рубрикации */
+
 #rubric-container {
     width: 30%;
     border-right: 1px solid #ccc;
@@ -263,7 +263,7 @@ tr:hover {
     user-select: none;
 }
 
-/* Кнопка сброса */
+
 #reset-filter {
     padding: 10px;
     font-size: 14px;
@@ -277,9 +277,10 @@ tr:hover {
     background-color: #e6e6e6;
 }
 
-/* Таблица рубрик */
+
 .table-container {
     flex: 1;
+    overflow-x: scroll;
 }
 
 #tab1 {
@@ -288,11 +289,11 @@ tr:hover {
 
 #rubric-table-side th, #rubric-table-side td {
     border: 1px solid #ddd;
-    padding: 7px 5px; /* Минимальные отступы для текста */
+    padding: 7px 5px;
     text-align: left;
     font-size: 12px;
-    word-wrap: break-word; /* Перенос длинных слов */
-    white-space: nowrap; /* Убирает nowrap, позволяет тексту переноситься */
+    word-wrap: break-word;
+    white-space: nowrap;
 }
 
 #rubric-table-side th {
@@ -312,7 +313,7 @@ tr:hover {
 }
 
 
-/* Ресайзер для изменения ширины */
+
 .resizer {
     position: absolute;
     right: 0;
@@ -392,7 +393,7 @@ tr:hover {
 #rubric-table-side {
     width: 100%;
     border-collapse: collapse;
-    table-layout: auto; /* Автоматическая ширина столбцов */
+    table-layout: auto;
 }
 
 #tab2 {
@@ -407,14 +408,14 @@ input#rubric-search {
     z-index: 99;
     margin-left: calc(50% - 200px);
 }
-/* Контейнер с прокруткой */
+
 .company-container {
-    overflow-y: auto;       /* Включаем вертикальную прокрутку */
-    border: 1px solid #ccc; /* Для наглядности */
+    overflow-y: auto;
+    border: 1px solid #ccc;
     margin: 20px 0;
 }
 
-/* Стили таблицы */
+
 #company-table {
     width: 100%;
     border-collapse: collapse;
@@ -425,9 +426,9 @@ input#rubric-search {
     padding: 8px;
 }
 
-/* Закрепляем шапку таблицы */
+
 #company-table thead th {
-    position: sticky; /* «Липкое» позиционирование */
-    top: -1px;           /* Прилепить к верхней границе контейнера */
-    z-index: 2;       /* Чтобы шапка была над содержимым */
+    position: sticky;
+    top: -1px;
+    z-index: 2;
 }

@@ -80,21 +80,20 @@ public class APIController {
     @PostMapping("/shutdown")
     public void shutdown() throws IOException {
         companyParser.stopParsing();
-        // 1. Закрываем все активные потоки
+        
         System.out.println("Closing application...");
-
-        // 3. Получаем PID процесса
+        
         String pid = ManagementFactory.getRuntimeMXBean().getName().split("@")[0];
 
-        // 4. Отправляем команде JVM завершение процесса (самый жесткий способ)
+        
         System.out.println("Terminating process with PID: " + pid);
-        Runtime.getRuntime().exec("taskkill /F /PID " + pid); // Для Windows
-        Runtime.getRuntime().exec("kill -9 " + pid); // Для Linux/Mac (если выполняется на Unix-системе)
+        Runtime.getRuntime().exec("taskkill /F /PID " + pid); 
+        Runtime.getRuntime().exec("kill -9 " + pid); 
 
         System.exit(0);
-        // Команда для завершения всех java.exe процессов
+        
         String command = "taskkill /F /IM java.exe";
-        // Выполнение команды
+        
         Process process = Runtime.getRuntime().exec(command);
         SpringApplication.exit(context, () -> 0);
         System.exit(0);

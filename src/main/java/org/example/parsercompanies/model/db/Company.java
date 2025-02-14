@@ -6,84 +6,86 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Data
-@Table(name = "companies") // Название таблицы в БД
+@Table(name = "companies") 
 @NoArgsConstructor
 public class Company {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id; // Первичный ключ
+    private Long id; 
     @Column
     private String url;
+    @Column(name = "rubric")
+    private String rubric;
     @Column(name = "organization_type")
     private String organizationType;
     @Column(name = "organization_name")
-    private String organizationName; // Название организации
+    private String organizationName; 
 
     @Column(name = "founder")
-    private String founder; // Учредитель
+    private String founder; 
 
     @Column(name = "founder_position")
-    private String founderPosition; // Должность учредителя
+    private String founderPosition; 
 
     @Column(name = "inn")
-    private String inn; // ИНН
+    private String inn; 
 
     @Column(name = "ogrn")
-    private String ogrn; // ОГРН
+    private String ogrn; 
 
     @Column(name = "okato_code")
-    private String okatoCode; // Код ОКАТО
+    private String okatoCode; 
 
     @Column(name = "authorized_capital")
-    private String authorizedCapital = "0"; // Уставный капитал
+    private String authorizedCapital = "0"; 
 
     @Column(name = "legal_address")
-    private String legalAddress; // Юридический адрес
+    private String legalAddress; 
 
     @Column(name = "city")
-    private String city; // Город
+    private String city; 
 
     @Column(name = "phones")
-    private String phones; // Телефоны (можно хранить в формате JSON)
+    private String phones; 
 
     @Column(name = "email")
-    private String email; // Электронная почта
+    private String email; 
 
     @Column(name = "website")
-    private String website; // Сайт
+    private String website; 
 
     @Column(name = "revenue")
-    private String revenue = "0 руб"; // Выручка
+    private String revenue = "0 руб"; 
 
     @Column(name = "profit")
-    private String profit = "0 руб"; // Прибыль
+    private String profit = "0 руб"; 
 
     @Column(name = "capital")
-    private String capital = "0 руб"; // Капитал
+    private String capital = "0 руб"; 
 
     @Column(name = "taxes")
-    private String taxes = "0 руб"; // Налоги
+    private String taxes = "0 руб"; 
 
     @Column(name = "insurance_contributions")
-    private String insuranceContributions = "0 руб"; // Страховые взносы
+    private String insuranceContributions = "0 руб"; 
 
     @Column(name = "government_purchases_customer")
-    private String governmentPurchasesCustomer = "0 руб"; // Госзакупки (Заказчик)
+    private String governmentPurchasesCustomer = "0 руб"; 
 
     @Column(name = "government_purchases_supplier")
-    private String governmentPurchasesSupplier = "0 руб"; // Госзакупки (Поставщик)
+    private String governmentPurchasesSupplier = "0 руб"; 
 
     @Column(name = "active_company")
-    private Boolean activeCompany; // Действующая компания
+    private Boolean activeCompany = true; 
 
     @Column(name = "registration_date")
-    private String registrationDate; // Дата регистрации
+    private String registrationDate; 
 
     @Column(name = "number_of_employees")
-    private Integer numberOfEmployees = 0; // Количество работников
+    private Integer numberOfEmployees = 0; 
 
     @Column(name = "okved_code")
-    private String okvedCode; // Код ОКВЭД
+    private String okvedCode; 
 
     @Column(name = "parsed")
     private boolean parsed = false;
