@@ -69,6 +69,8 @@ public class CompanyParser {
     private static final int WAIT_TIMEOUT_SECONDS = 30;
     @Autowired
     private CompanyRepository companyRepository;
+    //антигейт каптча
+    private final String apiKey = "";
 
 
     public void loadParsingInfo() throws IOException {
@@ -981,5 +983,14 @@ public class CompanyParser {
             return "0 руб.";
         }
     }
-}
 
+    public boolean isCaptchaPresent(WebDriver driver) {
+        try {
+            driver.findElement(By.className("g-recaptcha"));
+            return true;
+        } catch (NoSuchElementException e) {
+            return false;
+        }
+    }
+
+}
