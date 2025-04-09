@@ -76,14 +76,12 @@ public class SettingsService {
         options.addArguments("--headless");
         ChromeOptions options = new ChromeOptions();
 
-//        options.setPageLoadStrategy(PageLoadStrategy.EAGER);
+
         options.setPageLoadStrategy(PageLoadStrategy.NORMAL);
 
         options.addArguments("--disable-dev-shm-usage");
         options.addArguments("--no-sandbox");
         options.addArguments("--remote-debugging-port=9222");
-
-        options = new ChromeOptions();
 
         String proxy = (String) settings.get("proxy");
         String proxyLogin = (String) settings.get("proxyLogin");

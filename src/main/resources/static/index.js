@@ -214,6 +214,7 @@ function loadSettingsFromServer() {
             document.getElementById('export').checked = settings.autoExcelOpen;
             document.getElementById('okved').checked = settings.onlyMainOKVED;
             document.getElementById('remember').checked = settings.rememberParsingPosition;
+            document.getElementById('anti-captcha-key').value = settings.anticaptchaKey || '';
             document.getElementById('proxy').value = settings.proxy || '';
             document.getElementById('login-proxy').value = settings.proxyLogin || '';
             document.getElementById('password-proxy').value = settings.proxyPassword || '';
@@ -285,6 +286,7 @@ function refreshSettings() {
         autoExcelOpen: document.getElementById('export').checked,
         onlyMainOKVED: document.getElementById('okved').checked,
         rememberParsingPosition: document.getElementById('remember').checked,
+        anticaptchaKey: document.getElementById('anti-captcha-key').value,
         proxy: document.getElementById('proxy').value,
         proxyLogin: document.getElementById('login-proxy').value,
         proxyPassword: document.getElementById('password-proxy').value,
@@ -518,6 +520,7 @@ function cleanCompanies() {
                 autoExcelOpen: document.getElementById('export').checked,
                 onlyMainOKVED: document.getElementById('okved').checked,
                 rememberParsingPosition: document.getElementById('remember').checked,
+                anticaptchaKey: document.getElementById('anti-captcha-key').value,
                 proxy: document.getElementById('proxy').value,
                 proxyLogin: document.getElementById('login-proxy').value,
                 proxyPassword: document.getElementById('password-proxy').value,

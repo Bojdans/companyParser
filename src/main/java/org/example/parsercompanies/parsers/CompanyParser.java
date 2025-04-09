@@ -10,6 +10,7 @@ import org.example.parsercompanies.model.db.Company;
 import org.example.parsercompanies.repos.CategoryRepository;
 import org.example.parsercompanies.repos.CompanyRepository;
 import org.example.parsercompanies.services.SettingsService;
+import org.example.parsercompanies.util.CaptchaSolver;
 import org.openqa.selenium.*;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -51,7 +52,7 @@ public class CompanyParser {
     private Long currentPage;
     private boolean companiesParsed;
     private boolean linksOfCompaniesParsed;
-    private String logStatus = "ничего не делаем";
+    public static String logStatus = "ничего не делаем";
 
     private static final String INFO_FILE = Paths.get(System.getProperty("user.dir"), "cfg", "info.json").toString();
     private static final String SETTINGS_FILE = Paths.get(System.getProperty("user.dir"), "cfg", "settingsConfig.json").toString();
@@ -60,6 +61,7 @@ public class CompanyParser {
 
     @Autowired
     private CategoryRepository categoryRepository;
+    private CaptchaSolver captchaSolver;
 
     private WebDriver webDriver;
     private final AtomicBoolean isParsing = new AtomicBoolean(false);
@@ -69,8 +71,6 @@ public class CompanyParser {
     private static final int WAIT_TIMEOUT_SECONDS = 30;
     @Autowired
     private CompanyRepository companyRepository;
-    //антигейт каптча
-    private final String apiKey = "";
 
 
     public void loadParsingInfo() throws IOException {
@@ -103,6 +103,7 @@ public class CompanyParser {
             this.onlyInOperation = settings.isOnlyInOperation();
             this.partOfGovernmentProcurement = settings.isPartOfGovernmentProcurement();
             this.rememberParsingPosition = settings.isRememberParsingPosition();
+            CaptchaSolver.anticaptchaKey = settings.getAnticaptchaKey();
         } else {
             System.err.println("Settings file not found: " + SETTINGS_FILE);
 
@@ -124,7 +125,7 @@ public class CompanyParser {
     }
 
 
-    public void startParsing() throws IOException, InterruptedException {
+    public void startParsing() throws IOException{
 
         if (isParsing.get()) {
             System.out.println("Parsing is already running.");
@@ -135,7 +136,6 @@ public class CompanyParser {
         settingsService.reloadWebDriver();
         logStatus = "Загрузка настроек";
         System.out.println("Загрузка настроек");
-
 
         int tries = 0;
         while (!settingsService.isConfigured() && tries < 10) {
@@ -148,7 +148,6 @@ public class CompanyParser {
             }
             tries++;
         }
-
         if (!settingsService.isConfigured()) {
             logStatus = "Настройки так и не были загружены — завершаем.";
             System.out.println("Настройки так и не были загружены — завершаем.");
@@ -169,12 +168,11 @@ public class CompanyParser {
                 settingsService.getOptions().addArguments("--headless")
         );
         webDriver.manage().window().maximize();
-
+        captchaSolver = new CaptchaSolver(webDriver);
         try {
 
             webDriver.get("https://companium.ru/advanced/search");
-
-
+            captchaSolver.isCaptchaPresent();
             if (!isLinksOfCompaniesParsed()) {
                 applyFilters();
                 extractAndSaveCompanyLinks();
@@ -227,7 +225,7 @@ public class CompanyParser {
         }
     }
 
-    private void applyCategories() throws IOException, InterruptedException {
+    private void applyCategories() throws InterruptedException {
         WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(WAIT_TIMEOUT_SECONDS));
         Thread.sleep(2000);
 
@@ -358,7 +356,7 @@ public class CompanyParser {
     }
 
 
-    public void extractAndSaveCompanyLinks() throws InterruptedException, IOException {
+    public void extractAndSaveCompanyLinks(){
         if (!isParsing.get()) return;
         logStatus = "Переходим к парсингу...";
         System.out.println("Переходим к парсингу...");
@@ -378,8 +376,9 @@ public class CompanyParser {
         while (isParsing.get() && currentPage <= pagesDeep) {
             try {
                 webDriver.get("https://companium.ru/advanced/search?page=" + currentPage);
+                captchaSolver.isCaptchaPresent();
 
-                wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("main")));
+                wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector(".select-section")));
 
 
                 List<WebElement> rows = webDriver
@@ -421,13 +420,13 @@ public class CompanyParser {
                 Thread.sleep((long) (parsingDelay * 1000));
 
             }
-//            catch (WebDriverException e) {
-//                if (e.getMessage() != null &&
-//                        e.getMessage().contains("Session ID is null. Using WebDriver after calling quit()?")) {
-//                    isParsing.set(false);
-//                    startParsing();
-//                }
-//            }
+
+
+
+
+
+
+
             catch (Exception e) {
                 logStatus = "Ошибка при парсинге страницы: " + currentPage;
                 System.err.println("Error processing currentPage " + currentPage + ": " + e.getMessage());
@@ -542,6 +541,7 @@ public class CompanyParser {
             try {
                 System.out.println("Открываем ссылку для парсинга: " + c.getUrl());
                 webDriver.get(c.getUrl());
+                captchaSolver.isCaptchaPresent();
 
 
                 wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("body")));
@@ -566,14 +566,14 @@ public class CompanyParser {
                 }
                 logStatus = "спарсена компания: " + c.getId();
             }
-//            catch (WebDriverException e) {
-//                if (e.getMessage() != null &&
-//                        e.getMessage().contains("Session ID is null. Using WebDriver after calling quit()?")) {
-//                    System.err.println("Драйвер не активен, требуется пересоздание: ");
-//                    isParsing.set(false);
-//                    startParsing();
-//                }
-//            }
+
+
+
+
+
+
+
+
             catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -983,14 +983,4 @@ public class CompanyParser {
             return "0 руб.";
         }
     }
-
-    public boolean isCaptchaPresent(WebDriver driver) {
-        try {
-            driver.findElement(By.className("g-recaptcha"));
-            return true;
-        } catch (NoSuchElementException e) {
-            return false;
-        }
-    }
-
 }

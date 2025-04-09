@@ -136,6 +136,6 @@ public class APIController {
     }
     @GetMapping("/getLogStatus")
     public String getLogStatus(){
-        return companyParser.getLogStatus();
+        return CompanyParser.logStatus;
     }
 }
