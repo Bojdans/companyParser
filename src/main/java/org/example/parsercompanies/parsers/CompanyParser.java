@@ -428,7 +428,7 @@ public class CompanyParser {
 
 
             catch (Exception e) {
-                logStatus = "Ошибка при парсинге страницы: " + currentPage;
+                logStatus = "Ошибка при парсинге";
                 System.err.println("Error processing currentPage " + currentPage + ": " + e.getMessage());
             }
         }

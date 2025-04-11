@@ -60,6 +60,7 @@ public class CaptchaSolver {
         System.out.println("[SUCCESS] Капча успешно решена и вставлена.");
         System.out.println("[INFO] Нажатие на кнопку отправки формы...");
         driver.findElement(By.cssSelector("button[type='submit']")).click();
+        Thread.sleep(2000);
     }
 
     private String sendAntigateTask(String requestUrl, String json) throws Exception {
