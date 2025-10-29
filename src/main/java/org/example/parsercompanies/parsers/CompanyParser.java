@@ -11,8 +11,8 @@ import org.example.parsercompanies.repos.CategoryRepository;
 import org.example.parsercompanies.repos.CompanyRepository;
 import org.example.parsercompanies.services.SettingsService;
 import org.example.parsercompanies.util.CaptchaSolver;
-import org.openqa.selenium.*;
 import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
@@ -21,10 +21,13 @@ import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -66,7 +69,6 @@ public class CompanyParser {
     private WebDriver webDriver;
     private final AtomicBoolean isParsing = new AtomicBoolean(false);
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
-
 
     private static final int WAIT_TIMEOUT_SECONDS = 30;
     @Autowired
@@ -165,7 +167,7 @@ public class CompanyParser {
         System.out.println(isCompaniesParsed());
         System.out.println(isLinksOfCompaniesParsed());
         webDriver = new ChromeDriver(
-                settingsService.getOptions().addArguments("--headless")
+                settingsService.getOptions()//.addArguments("--headless")
         );
         webDriver.manage().window().maximize();
         captchaSolver = new CaptchaSolver(webDriver);
@@ -221,7 +223,6 @@ public class CompanyParser {
         if (partOfGovernmentProcurement) {
             System.out.println("Применяем чекбокс 2");
             checkAndTogglePartOfGovernmentProcurement();
-
         }
     }
 
@@ -271,8 +272,11 @@ public class CompanyParser {
             for (WebElement result : results) {
                 try {
                     WebElement label = result.findElement(By.cssSelector(".v-treeview-node__label"));
-                    String foundCategory = label.getText();
-                    if (foundCategory.contains(categoryName)) {
+                    String foundCategory = !label.getText().isBlank()  ? label.getText().trim().substring(label.getText().trim().indexOf(" ")) : "";
+                    System.out.println(foundCategory.trim() + "/");
+                    System.out.println(categoryName.trim() + "/");
+                    System.out.println(foundCategory.trim().equals(categoryName.trim()));
+                    if (foundCategory.trim().equals(categoryName.trim())) {
                         WebElement checkbox = result.findElement(By.cssSelector(".v-treeview-node__checkbox"));
                         String checkboxClass = checkbox.getAttribute("class");
                         if (!checkboxClass.contains("mdi-checkbox-marked")) {
@@ -295,7 +299,6 @@ public class CompanyParser {
         selectButton.click();
 
     }
-
     private void applyCities() throws InterruptedException {
         WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(WAIT_TIMEOUT_SECONDS));
         Thread.sleep(2000);
@@ -428,7 +431,7 @@ public class CompanyParser {
 
 
             catch (Exception e) {
-                logStatus = "Ошибка при парсинге страницы: " + currentPage;
+                logStatus = "Ошибка при парсинге";
                 System.err.println("Error processing currentPage " + currentPage + ": " + e.getMessage());
             }
         }
@@ -459,8 +462,6 @@ public class CompanyParser {
             System.err.println("Error saving progress: " + e.getMessage());
         }
     }
-
-
     public void stopParsing() {
         isParsing.set(false);
         if (webDriver != null) {
@@ -469,7 +470,6 @@ public class CompanyParser {
             System.out.println("остановка парсинга");
         }
     }
-
 
     private void checkAndToggleCheckbox() throws InterruptedException {
         WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(WAIT_TIMEOUT_SECONDS));
@@ -492,7 +492,6 @@ public class CompanyParser {
         }
     }
 
-
     private void checkAndTogglePartOfGovernmentProcurement() throws InterruptedException {
         WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(WAIT_TIMEOUT_SECONDS));
         Thread.sleep(2000);
@@ -503,6 +502,7 @@ public class CompanyParser {
                 )
         );
         governmentProcurement.click();
+
 
 
         WebElement checkbox = wait.until(
@@ -543,9 +543,20 @@ public class CompanyParser {
                 webDriver.get(c.getUrl());
                 captchaSolver.isCaptchaPresent();
 
-
                 wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("body")));
 
+                int attempts = 0;
+                while (attempts < 3) {
+                    try {
+                        webDriver.get(c.getUrl());
+                        captchaSolver.isCaptchaPresent();
+                        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector(".x-section")));
+                        break;
+                    } catch (TimeoutException e) {
+                        System.err.println("Попытка " + (attempts + 1) + ": .x-section не найден, повтор запроса");
+                    }
+                    attempts++;
+                }
 
                 Thread.sleep((long) (parsingDelay * 1000));
                 System.out.println("Собрали информацию по " + c.getUrl());
@@ -566,14 +577,6 @@ public class CompanyParser {
                 }
                 logStatus = "спарсена компания: " + c.getId();
             }
-
-
-
-
-
-
-
-
             catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -821,15 +824,10 @@ public class CompanyParser {
     private String parsePhones() {
         try {
             WebElement section = webDriver.findElement(By.xpath("//h2[@id='contacts']/ancestor::section"));
-
-            WebElement phoneBlock = section.findElement(By.xpath(".//strong[contains(text(),'Телефоны')]/following-sibling::a[contains(@href, 'tel:')]"));
-
-            List<WebElement> phoneLinks = phoneBlock.findElements(By.xpath("./ancestor::div[contains(@class, 'col-12')]/a[contains(@href, 'tel:')]"));
-
+            List<WebElement> phoneLinks = section.findElements(By.xpath(".//a[starts-with(@href, 'tel:')]"));
             if (phoneLinks.isEmpty()) {
                 return null;
             }
-
             StringBuilder sb = new StringBuilder();
             for (WebElement link : phoneLinks) {
                 if (sb.length() > 0) sb.append(", ");
@@ -840,6 +838,7 @@ public class CompanyParser {
             return null;
         }
     }
+
 
     private String parseEmailIfPresent() {
         try {

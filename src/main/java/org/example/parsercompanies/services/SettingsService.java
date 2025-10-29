@@ -73,14 +73,10 @@ public class SettingsService {
         loadSettings();
 
         System.setProperty("webdriver.chrome.driver", chromeDriverPath);
-        options.addArguments("--headless");
-        ChromeOptions options = new ChromeOptions();
-
-
+        options.addArguments("--window-size=1920,1080"); // Фиксированный размер окна
+        options.addArguments("--disable-blink-features=AutomationControlled"); // Обход детекта автоматизации
+        options.addArguments("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36..."); // Маскировка под обычный браузер
         options.setPageLoadStrategy(PageLoadStrategy.NORMAL);
-
-        options.addArguments("--disable-dev-shm-usage");
-        options.addArguments("--no-sandbox");
         options.addArguments("--remote-debugging-port=9222");
 
         String proxy = (String) settings.get("proxy");
