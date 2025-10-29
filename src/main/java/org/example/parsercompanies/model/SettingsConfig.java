@@ -2,6 +2,8 @@ package org.example.parsercompanies.model;
 
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class SettingsConfig {
     private Long pagesDeep;
@@ -14,6 +16,7 @@ public class SettingsConfig {
     private String proxy;
     private String proxyLogin;
     private String proxyPassword;
-    private java.util.List<String> cities;
-    private java.util.List<String> regions;
+    private List<String> cities;
+    private List<String> regions;
+    private String anticaptchaKey;
 }
