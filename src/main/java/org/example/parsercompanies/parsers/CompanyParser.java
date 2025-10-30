@@ -106,9 +106,11 @@ public class CompanyParser {
             this.partOfGovernmentProcurement = settings.isPartOfGovernmentProcurement();
             this.rememberParsingPosition = settings.isRememberParsingPosition();
             CaptchaSolver.anticaptchaKey = settings.getAnticaptchaKey();
+            CaptchaSolver.rucaptchaKey = settings.getRucaptchaKey();
+            CaptchaSolver.yandexCaptcha = settings.isYandexCaptcha();
+            CaptchaSolver.googleCaptcha = settings.isGoogleCaptcha();
         } else {
             System.err.println("Settings file not found: " + SETTINGS_FILE);
-
             this.pagesDeep = 1L;
             this.parsingDelay = 2.0;
             this.cities = Collections.emptyList();
@@ -289,14 +291,15 @@ public class CompanyParser {
                 }
             }
         }
+        captchaSolver.isCaptchaPresent();
 
-
-        WebElement selectButton = wait.until(
-                ExpectedConditions.elementToBeClickable(
-                        By.xpath("/html/body/main/div[2]/div/div[4]/div/div/div[2]/div/div/div[3]/div[2]/button")
-                )
-        );
-        selectButton.click();
+//        WebElement selectButton = wait.until(
+//                ExpectedConditions.elementToBeClickable(
+//                        By.xpath("/html/body/main/div[2]/div/div[4]/div/div/div[2]/div/div/div[3]/div[2]/button")
+//                )
+//        );
+        WebElement selectButton = webDriver.findElement(By.xpath("/html/body/main/div[2]/div/div[4]/div/div/div[2]/div/div/div[3]/div[2]/button"));
+        ((JavascriptExecutor) webDriver).executeScript("arguments[0].click();", selectButton);
 
     }
     private void applyCities() throws InterruptedException {
@@ -348,12 +351,13 @@ public class CompanyParser {
             }
         }
 
-
+        captchaSolver.isCaptchaPresent();
         WebElement selectButton = wait.until(
                 ExpectedConditions.elementToBeClickable(
                         By.xpath("/html/body/main/div[2]/div/div[5]/div/div/div[2]/div/div/div[3]/div[2]/button")
                 )
         );
+
         selectButton.click();
 
     }
@@ -474,7 +478,7 @@ public class CompanyParser {
     private void checkAndToggleCheckbox() throws InterruptedException {
         WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(WAIT_TIMEOUT_SECONDS));
         Thread.sleep(2000);
-
+        captchaSolver.isCaptchaPresent();
         WebElement checkbox = wait.until(
                 ExpectedConditions.presenceOfElementLocated(By.id("input-13"))
         );
