@@ -19,4 +19,7 @@ public class SettingsConfig {
     private List<String> cities;
     private List<String> regions;
     private String anticaptchaKey;
+    private String rucaptchaKey;
+    private boolean yandexCaptcha;
+    private boolean googleCaptcha;
 }
